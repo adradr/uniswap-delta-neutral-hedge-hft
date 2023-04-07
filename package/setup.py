@@ -1,7 +1,7 @@
 from setuptools import setup
 
 setup(
-    name="uniswap-hft" ,
+    name="uniswap-hft",
     version="0.1",
     description="Uniswap trading library, which allows to create a delta neutral hedge for a given token pair.",
     url="https://github.com/adradr/uniswap-delta-neutral-hedge-hft",
