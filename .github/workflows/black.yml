@@ -6,7 +6,10 @@ jobs:
   format:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
+        with:
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          ref: ${{ github.event.pull_request.head.ref }}
       - name: Format code with black
         run: |
           pip install black
@@ -24,3 +27,4 @@ jobs:
         with:
           add: "."
           message: "🖤 Format code with black"
+          new_branch: 
