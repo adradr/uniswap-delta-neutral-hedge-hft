@@ -9,4 +9,4 @@ logging.basicConfig(level=logging.INFO)
 
 
 def test_init():
-    return
+    return None
