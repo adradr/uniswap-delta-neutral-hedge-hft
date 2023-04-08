@@ -10,6 +10,7 @@ setup(
     packages=["uniswap_math", "trading_engine", "slack_interface"],
     package_data={},
     install_requires=[
+        "pytest",
         "pandas",
         "numpy",
         "jsonpickle",

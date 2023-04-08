@@ -27,4 +27,3 @@ jobs:
         with:
           add: "."
           message: "🖤 Format code with black"
-          new_branch: 
