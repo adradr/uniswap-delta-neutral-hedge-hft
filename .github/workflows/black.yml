@@ -1,0 +1,30 @@
+name: Python Black Formatter
+
+on: [push, pull_request]
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          ref: ${{ github.event.pull_request.head.ref }}
+      - name: Format code with black
+        run: |
+          pip install black
+          black .
+      - name: Sort imports with isort
+        run: |
+          pip install isort
+          isort .
+      - name: Remove unused imports with autoflake
+        run: |
+          pip install autoflake
+          autoflake --in-place --remove-all-unused-imports --remove-unused-variables --recursive .
+      - name: Commit changes
+        uses: EndBug/add-and-commit@latest
+        with:
+          add: "."
+          message: "🖤 Format code with black"
+          new_branch: 
