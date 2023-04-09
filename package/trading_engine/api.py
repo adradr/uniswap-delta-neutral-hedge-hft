@@ -1,5 +1,6 @@
 import logging
-from flask import Flask, request, jsonify
+
+from flask import Flask, jsonify, request
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required
 from trading_engine.engine import TradingEngine
 
