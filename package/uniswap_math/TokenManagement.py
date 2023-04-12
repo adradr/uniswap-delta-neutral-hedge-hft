@@ -113,24 +113,27 @@ def getTokenAmount(liquidity):
     return 0
 
 
-'''
+"""
 Calculates how much of asset y we need to create a new pool, given the current price.
 This function calculates the price ranges from the percentage.
-'''
+"""
+
+
 def getSwapAmount(amountX, price, percentage):
-    #Lower range of the price
+    # Lower range of the price
     pa = price * (1 - (percentage / 100))
     print(pa)
-    #Upper range of the price
+    # Upper range of the price
     pb = price * (1 + (percentage / 100))
     print(pb)
-    #Calculate the liqudity for the top half of the range
-    L_x = amountX * ((math.sqrt(price) * math.sqrt(pb)) / (math.sqrt(pb) - math.sqrt(price)))
+    # Calculate the liqudity for the top half of the range
+    L_x = amountX * (
+        (math.sqrt(price) * math.sqrt(pb)) / (math.sqrt(pb) - math.sqrt(price))
+    )
 
-    #Use L_x to calculate amountY
-    amountY = L_x = (math.sqrt(price) - math.sqrt(pa))
+    # Use L_x to calculate amountY
+    amountY = L_x = math.sqrt(price) - math.sqrt(pa)
     return amountY
-
 
 
 print(adjustedPricesToTicks(2014.29, 1923.74, 12))
