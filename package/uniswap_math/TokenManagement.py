@@ -25,33 +25,40 @@ so by taking the base 1.0001 logarithm of the current price, we get the tick at 
 @returns: The converted tick
 """
 # Constants
-Q96 = 2 ** 96
-ETH = 10 ** 18
-USDC = 10 ** 6
+Q96 = 2**96
+ETH = 10**18
+USDC = 10**6
+
 
 def tick_to_sqrt_price_x_96(tick):
     return int(1.0001 ** (tick / 2) * Q96)
+
 
 def sqrt_price_x_96_to_tick(price):
     base = math.sqrt(1.0001)
     p = price / Q96
     return math.floor(math.log(p, base))
 
+
 def price_to_sqrt_price_x_96(price):
     return math.sqrt((ETH / USDC) / price) * Q96
 
+
 def sqrt_price_x_96_to_price(sqrt_price_x_96):
     return (1 / ((sqrt_price_x_96 / Q96) ** 2)) * (ETH / USDC)
+
 
 def tickToPrice(tick):
     sqrt_price = tick_to_sqrt_price_x_96(tick)
     price = sqrt_price_x_96_to_price(sqrt_price)
     return price
 
+
 def priceToTick(price):
     sqrt_price = price_to_sqrt_price_x_96(price)
     tick = sqrt_price_x_96_to_tick(sqrt_price)
     return tick
+
 
 """
 Gives the lower and upper ranges of a soon to be created pool, given a percentage,
@@ -99,15 +106,19 @@ if you have 3 ETH, and 5000 USDC, and 1 ETH = 1500 USDC, then your total liqudit
 Calculates how much of asset y we need to create a new pool, given the current price.
 This function calculates the price ranges from the percentage.
 """
+
+
 def getMinY(amountX, price, percentage):
-     # Lower range of the price
+    # Lower range of the price
     pa = price * (1 - (percentage / 100))
 
     # Upper range of the price
     pb = price * (1 + (percentage / 100))
 
     # Calculate the liqudity for the top half of the range
-    L_x = amountX * ((math.sqrt(price) * math.sqrt(pb)) / (math.sqrt(pb) - math.sqrt(price)))
+    L_x = amountX * (
+        (math.sqrt(price) * math.sqrt(pb)) / (math.sqrt(pb) - math.sqrt(price))
+    )
 
     # Use L_x to calculate amountY
     amountY = L_x * (math.sqrt(price) - math.sqrt(pa))
@@ -118,6 +129,8 @@ def getMinY(amountX, price, percentage):
 Calculates how much of asset x we need to create a new pool, given the current price.
 This function calculates the price ranges from the percentage.
 """
+
+
 def getMinX(amountY, price, percentage):
     # Lower range of the price
     pa = price * (1 - (percentage / 100))
@@ -140,6 +153,7 @@ that way
 """
 def getSwapAmount(amount):
     return amount * 0.48
+
 
 print(getRanges(25, 2000))
 print(getMinX(5076.1, 2000, 25))
