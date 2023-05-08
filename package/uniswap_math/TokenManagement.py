@@ -24,48 +24,34 @@ so by taking the base 1.0001 logarithm of the current price, we get the tick at 
 @param price: The price to be converted 
 @returns: The converted tick
 """
+# Constants
+Q96 = 2 ** 96
+ETH = 10 ** 18
+USDC = 10 ** 6
 
+def tick_to_sqrt_price_x_96(tick):
+    return int(1.0001 ** (tick / 2) * Q96)
 
-def priceToTick(price):
-    return math.floor(math.log(price, 1.0001))
+def sqrt_price_x_96_to_tick(price):
+    base = math.sqrt(1.0001)
+    p = price / Q96
+    return math.floor(math.log(p, base))
 
+def price_to_sqrt_price_x_96(price):
+    return math.sqrt((ETH / USDC) / price) * Q96
 
-def adjustedPricesToTicks(price0, price1, decimal):
-    p0, p1 = (1 / price0), (1 / price1)
-    p0_adj = p0 * math.pow(10, decimal)
-    p1_adj = p1 * math.pow(10, decimal)
-    print(p0_adj)
-    print(p1_adj)
-    tick0 = 2 * (math.log(1.0001, math.sqrt(p0_adj)))
-    tick1 = 2 * (math.log(1.0001, math.sqrt(p1_adj)))
-    return (tick0, tick1)
-
-
-"""
-Convert a tick, used by Uniswap V3 to a price
-
-A tick is defined as:
-p(i) = 1.0001^i, where p(i) is the price at tick i,
-so the get the price at a tick, we need to raise 1.0001 to the power of i
-
-@param tick: The tick to be converted 
-@returns: The converted price
-"""
-
+def sqrt_price_x_96_to_price(sqrt_price_x_96):
+    return (1 / ((sqrt_price_x_96 / Q96) ** 2)) * (ETH / USDC)
 
 def tickToPrice(tick):
-    return math.floor(math.pow(1.0001, tick))
+    sqrt_price = tick_to_sqrt_price_x_96(tick)
+    price = sqrt_price_x_96_to_price(sqrt_price)
+    return price
 
-
-def adjustedPricesFromTick(tick0, tick1, decimal0, decimal1):
-    p0 = math.pow(math.pow(1.0001, (tick0 / 2)), 2)
-    p1 = math.pow(math.pow(1.0001, (tick1 / 2)), 2)
-
-    p0_adj = p0 * math.pow(10, (decimal0 - decimal1))
-    p1_adj = p1 * math.pow(10, (decimal0 - decimal1))
-
-    return ((1 / p0_adj), (1 / p1_adj))
-
+def priceToTick(price):
+    sqrt_price = price_to_sqrt_price_x_96(price)
+    tick = sqrt_price_x_96_to_tick(sqrt_price)
+    return tick
 
 """
 Gives the lower and upper ranges of a soon to be created pool, given a percentage,
@@ -80,8 +66,8 @@ and the corresponding ticks, in that order
 def getRanges(percentage, currentPrice):
     upperRange = currentPrice * (1 + (percentage / 100))
     lowerRange = currentPrice * (1 - (percentage / 100))
-    upperTick = priceToTick(upperRange)
-    lowerTick = priceToTick(lowerRange)
+    upperTick = priceToTick(lowerRange)
+    lowerTick = priceToTick(upperRange)
     currentTick = priceToTick(currentPrice)
 
     return (lowerRange, currentPrice, upperRange, lowerTick, currentTick, upperTick)
@@ -109,16 +95,12 @@ if you have 3 ETH, and 5000 USDC, and 1 ETH = 1500 USDC, then your total liqudit
 """
 
 
-def getTokenAmount(liquidity):
-    return 0
-
-
 """
 Calculates how much of asset y we need to create a new pool, given the current price.
 This function calculates the price ranges from the percentage.
 """
-def getSwapAmount(amountX, price, percentage):
-    # Lower range of the price
+def getMinY(amountX, price, percentage):
+     # Lower range of the price
     pa = price * (1 - (percentage / 100))
 
     # Upper range of the price
@@ -132,5 +114,29 @@ def getSwapAmount(amountX, price, percentage):
     return amountY
 
 
-print(adjustedPricesToTicks(2014.29, 1923.74, 12))
-print(getSwapAmount(2, 2000, 25))
+"""
+Calculates how much of asset x we need to create a new pool, given the current price.
+This function calculates the price ranges from the percentage.
+"""
+def getMinX(amountY, price, percentage):
+    # Lower range of the price
+    pa = price * (1 - (percentage / 100))
+
+    # Upper range of the price
+    pb = price * (1 + (percentage / 100))
+
+    # Calculate the liqudity for the top half of the range
+    L_y = amountY * (math.sqrt(pb) - math.sqrt(pa))
+
+    # Use L_x to calculate amountY
+    amountY = L_y * (math.sqrt(price) - math.sqrt(pa))
+    return amountY
+
+def getSwapAmount(token, amount, price, percentage):
+    if token == 0:
+        amount * 0.49
+        amountY = getMinY(amount, price, percentage)
+        return amountY
+
+print(getRanges(25, 2000))
+print(getMinX(5076.1, 2000, 25))
