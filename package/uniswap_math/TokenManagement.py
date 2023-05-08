@@ -132,11 +132,14 @@ def getMinX(amountY, price, percentage):
     amountY = L_y * (math.sqrt(price) - math.sqrt(pa))
     return amountY
 
-def getSwapAmount(token, amount, price, percentage):
-    if token == 0:
-        amount * 0.49
-        amountY = getMinY(amount, price, percentage)
-        return amountY
+
+"""
+It is possible to calculate the other amount needed from the price range and the amount of one of the tokens.
+Since one of the tokens will always be a smaller amount, it is best to swap a bit more then half to the other, and create the pool 
+that way
+"""
+def getSwapAmount(amount):
+    return amount * 0.48
 
 print(getRanges(25, 2000))
 print(getMinX(5076.1, 2000, 25))
