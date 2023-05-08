@@ -151,6 +151,8 @@ It is possible to calculate the other amount needed from the price range and the
 Since one of the tokens will always be a smaller amount, it is best to swap a bit more then half to the other, and create the pool 
 that way
 """
+
+
 def getSwapAmount(amount):
     return amount * 0.48
 
