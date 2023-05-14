@@ -120,9 +120,9 @@ class TokenManager:
         """
         upperRange = currentPrice * (1 + (percentage / 100))
         lowerRange = currentPrice * (1 - (percentage / 100))
-        upperTick = self.priceToTick(lowerRange)
-        lowerTick = self.priceToTick(upperRange)
-        currentTick = self.priceToTick(currentPrice)
+        upperTick = self.price_to_tick(lowerRange)
+        lowerTick = self.price_to_tick(upperRange)
+        currentTick = self.price_to_tick(currentPrice)
 
         return (lowerRange, currentPrice, upperRange, lowerTick, currentTick, upperTick)
 
