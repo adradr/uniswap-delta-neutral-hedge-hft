@@ -1,5 +1,6 @@
-import pytest
 from unittest.mock import MagicMock
+
+import pytest
 from trading_engine.api import TradingEngineAPI
 from trading_engine.engine import TradingEngine
 

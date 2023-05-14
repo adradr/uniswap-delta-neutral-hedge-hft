@@ -1,4 +1,5 @@
 import logging
+
 from eth_typing.evm import ChecksumAddress
 from web3_manager import web_manager
 
