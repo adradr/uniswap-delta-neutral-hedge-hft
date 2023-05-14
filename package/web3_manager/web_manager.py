@@ -1,6 +1,7 @@
-import logging
 import datetime
+import logging
 import time
+
 from eth_typing.evm import ChecksumAddress
 from uniswap_math import TokenManagement
 from uniswap_v3.uniswap import Uniswap
@@ -216,10 +217,10 @@ class Web3Manager:
             or currentTick < self.position_history[-1]["lower_tick"]
         ):
             # Close position
-            tx_receipt = self.close_position()
+            self.close_position()
 
             # Open position
-            tx_receipt = self.open_position()
+            self.open_position()
 
     def open_position(self) -> TxReceipt:
         """Open a position at Uniswap V3
