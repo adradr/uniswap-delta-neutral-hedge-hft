@@ -1,6 +1,5 @@
 import logging
 
-
 from ..package.uniswap_math.TokenManagement import TokenManager
 
 logger = logging.getLogger(__name__)
