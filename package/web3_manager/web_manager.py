@@ -1,3 +1,6 @@
+import logging
+import datetime
+import time
 from eth_typing.evm import ChecksumAddress
 from uniswap_math import TokenManagement
 from uniswap_v3.uniswap import Uniswap
@@ -21,6 +24,7 @@ class Web3Manager:
         range_percentage: int,
         capital_percentage: int,
         provider: str,
+        debug: bool = False,
     ):
         """Initilizes a pool with an associated wallet and a percentage
 
@@ -32,6 +36,7 @@ class Web3Manager:
             range_percentage (int): How wide the range should be in percentage (e.g. 1 for 1%)
             capital_percentage (int): How much of the funds should be used to provide liquidity
             provider (str): The provider of the blockchain, e.g. infura
+            debug (bool, optional): Whether to enable debug logging. Defaults to False.
 
         """
         # Set variables
@@ -43,17 +48,31 @@ class Web3Manager:
         self.capital_percentage = capital_percentage
         self.provider = provider
 
+        self.logger = logging.getLogger(__name__)  # Retrieve the logger object
+
+        # Set log level based on debug flag
+        log_level = logging.DEBUG if debug else logging.INFO
+        self.logger.setLevel(log_level)
+
         # Initialize variables
-        self.position_history = {}
+        self.position_history = []
         """
         position_history = [
             {
                 "tick_lower": int,
                 "tick_upper": int,
+                "current_tick": int,
+                "initial_tick": int,
+                "lower_range": float,
+                "upper_range": float,
+                "current_price": float,
+                "intial_price": float,
                 "tokenID": int,
-                "swapTx": TxReceipt,
-                "openTx": TxReceipt,
-                "closeTx": TxReceipt,
+                "swapTxRc": TxReceipt,
+                "openTxRc": TxReceipt,
+                "closeTxRc": TxReceipt,
+                "last_update": datetime,
+            }
         ]
         """
 
@@ -75,8 +94,8 @@ class Web3Manager:
         self.decimal1 = self.uniswap.token1_decimals
         self.token0 = self.uniswap.token0
         self.token1 = self.uniswap.token1
-        self.token0Contract = self.uniswap.token0Contract
-        self.token1Contract = self.uniswap.token1Contract
+        self.token0_contract = self.uniswap.token0Contract
+        self.token1_contract = self.uniswap.token1Contract
         self.pool_contract = self.uniswap.pool
 
         # Initialize tokenManager
@@ -89,12 +108,20 @@ class Web3Manager:
 
     def update_balance(self):
         """Updates the balances of the wallet for token0 and token1"""
-        self.token0Balance = self.token0Contract.functions.balanceOf(
+        self.token0Balance = self.token0_contract.functions.balanceOf(
             self.walletAddress
         ).call()
-        self.token1Balance = self.token1Contract.functions.balanceOf(
+        self.token1Balance = self.token1_contract.functions.balanceOf(
             self.walletAddress
         ).call()
+
+    def get_current_time_str(self) -> str:
+        # Save position history
+        last_update = time.time()
+        last_update_str = datetime.datetime.fromtimestamp(last_update).strftime(
+            "%Y-%m-%d %H:%M:%S"
+        )
+        return last_update_str
 
     def get_current_price(self) -> float:
         """Gets the current price of the pool
@@ -165,11 +192,23 @@ class Web3Manager:
         return self.web3.eth.getTransactionReceipt(hex)
 
     def update_position(self):
+        """Updates the position of the wallet in the pool
+        1. Get current price and tick
+        2. Only if tick is higher or lower than range close position
+            a. Close position
+            b. Open position
+
+        """
         # Get current price and tick
         currentPrice = self.uniswap.get_raw_price(
             token_in=self.token0, token_out=self.token1
         )
         currentTick = self.tokenManager.price_to_tick(currentPrice)
+
+        # Save current tick and price
+        self.position_history[-1]["current_tick"] = currentTick
+        self.position_history[-1]["current_price"] = currentPrice
+        self.position_history[-1]["last_update"] = self.get_current_time_str()
 
         # Only if tick is higher or lower than range close position
         if (
@@ -177,22 +216,17 @@ class Web3Manager:
             or currentTick < self.position_history[-1]["lower_tick"]
         ):
             # Close position
-            tx_receipt = self.close_position(self.position_history[-1]["tokenId"])
-
-            # Update balances
-            self.update_balance()
-
-            # Swap tokens
-            self.swap_amounts()
+            tx_receipt = self.close_position()
 
             # Open position
-            tx_receipt = self.open_position(capitalPercentage=self.capital_percentage)
+            tx_receipt = self.open_position()
 
-            # Get tokenId
-            tokenId = self.parseTxReceiptForTokenId(rc=tx_receipt)
-
-    def open_position(self, capitalPercentage: int = 100) -> TxReceipt:
-        """Opens a position in the Uniswap V3 pool
+    def open_position(self) -> TxReceipt:
+        """Open a position at Uniswap V3
+        1. Updates the balances of the wallet for token0 and token1
+        2. Swaps the tokens in the wallet for the token with the least amount
+        3. Opens a position at Uniswap V3
+        4. Saves the position in the position_history list
 
         Args:
             capitalPercentage (int, optional): Percentage of capital to be used for the position. Defaults to 100.
@@ -202,11 +236,14 @@ class Web3Manager:
         """
         # Get token amounts
         self.update_balance()
-        amount0 = self.token0Balance * (capitalPercentage / 100)
-        amount1 = self.token1Balance * (capitalPercentage / 100)
+        amount0 = self.token0Balance * (self.capital_percentage / 100)
+        amount1 = self.token1Balance * (self.capital_percentage / 100)
 
         # Get current price
         currentPrice = self.get_current_price()
+
+        # Swap tokens
+        swap_rc = self.swap_amounts()
 
         # Calculate ticks from currentPrice
         (
@@ -221,7 +258,7 @@ class Web3Manager:
         )
 
         # open position at uniswap
-        return self.uniswap.check_approval_and_mint_liquidity(
+        rc_mint = self.uniswap.check_approval_and_mint_liquidity(
             pool=self.pool_contract,
             amount_0=amount0,
             amount_1=amount1,
@@ -229,8 +266,34 @@ class Web3Manager:
             tick_upper=upperTick,
         )
 
-    def close_position(self, tokenId: int) -> TxReceipt:
+        # Get tokenId
+        tokenId = self.parseTxReceiptForTokenId(rc=rc_mint)
+
+        # Save position in position_history
+        self.position_history.append(
+            {
+                "tick_lower": lowerTick,
+                "tick_upper": upperTick,
+                "current_tick": currentTick,
+                "initial_tick": currentTick,
+                "lower_range": lowerRange,
+                "upper_range": upperRange,
+                "current_price": currentPrice,
+                "intial_price": currentPrice,
+                "tokenID": tokenId,
+                "openTxRc": rc_mint,
+                "swapTxRc": swap_rc,
+                "closeTxRc": None,
+                "last_update": self.get_current_time_str(),
+            }
+        )
+
+        return rc_mint
+
+    def close_position(self) -> TxReceipt:
         """Closes a position in the Uniswap V3 pool
+        1. Closes the position at Uniswap V3
+        2. Saves the position in the position_history list
 
         Args:
             tokenId (int): tokenId of the Uniswap V3 NFT
@@ -239,4 +302,12 @@ class Web3Manager:
             TxReceipt: Transaction receipt of the close position
         """
         # Close position at uniswap
-        return self.uniswap.close_position(tokenId=tokenId, amount0Min=0, amount1Min=0)
+        token_id = self.position_history[-1]["tokenID"]
+        # TODO: return collect amount and save it in position history
+        close_rc = self.uniswap.close_position(tokenId=token_id)
+
+        # Save position history
+        self.position_history[-1]["closeTxRc"] = close_rc
+        self.position_history[-1]["last_update"] = self.get_current_time_str()
+
+        return close_rc

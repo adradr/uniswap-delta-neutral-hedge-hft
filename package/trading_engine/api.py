@@ -1,14 +1,15 @@
+import time
 import logging
 
-from flask import Flask, jsonify, request
+from flask import Flask, request, jsonify
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required
-from trading_engine.engine import TradingEngine
+from trading_engine import engine
 
 
 class TradingEngineAPI:
     def __init__(
         self,
-        engine: TradingEngine,
+        engine: engine.TradingEngine,
         jwt_secret_key: str,
         allowed_users_passwords: list[tuple[str, str]],
         host: str = "0.0.0.0",
@@ -22,14 +23,18 @@ class TradingEngineAPI:
         self.app = Flask(__name__)
         self.app.config["JWT_SECRET_KEY"] = jwt_secret_key
         self.jwt = JWTManager(self.app)
-        self.logger = logging.basicConfig(
-            level=logging.DEBUG if self.debug else logging.INFO
-        )
+        self.logger = logging.getLogger(__name__)  # Retrieve the logger object
+
+        # Set log level based on debug flag
+        log_level = logging.DEBUG if self.debug else logging.INFO
+        self.logger.setLevel(log_level)
 
         @self.app.route("/login", methods=["POST"])
         def login():
-            username = request.json.get("username", None)
-            password = request.json.get("password", None)
+            # Parse username and password from request
+            data = request.json
+            username = data.get("username", None)  # type: ignore
+            password = data.get("password", None)  # type: ignore
             if not username or not password:
                 return (
                     jsonify(
@@ -87,11 +92,28 @@ class TradingEngineAPI:
                     jsonify({"status": "error", "message": "Engine is not running"}),
                     404,
                 )
-            return jsonify(self.engine.get_stats())
+            return (
+                jsonify(
+                    {
+                        "status": "success",
+                        "message": f"Stats for {type(self.engine).__name__}",
+                        "stats": self.engine.web3_manager.position_history[-1],
+                    }
+                ),
+                200,
+            )
 
         @self.app.route("/update", methods=["POST"])
         @jwt_required()
         def update_engine():
+            # Only update if engine is running
+            if not self.engine.running:
+                return (
+                    jsonify({"status": "error", "message": "Engine is not running"}),
+                    404,
+                )
+
+            # Update engine
             self.engine.update()
             logging.info(f"Updated {type(self.engine).__name__}")
             return (
@@ -106,6 +128,7 @@ class TradingEngineAPI:
 
         @self.app.route("/healthcheck", methods=["GET"])
         def healthcheck():
+            time.sleep(1)
             return jsonify({"status": "success", "message": "Healthy"}), 200
 
     def run(self):
