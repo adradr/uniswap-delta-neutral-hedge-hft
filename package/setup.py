@@ -20,6 +20,9 @@ setup(
         ],
         "uniswap_v3": [
             "assets/*",
+            "assets/uniswap-v1/*",
+            "assets/uniswap-v2/*",
+            "assets/uniswap-v3/*",
         ],
     },
     install_requires=[
