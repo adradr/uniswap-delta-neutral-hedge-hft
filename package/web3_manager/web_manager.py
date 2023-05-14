@@ -108,7 +108,7 @@ class Web3Manager:
         # This value may not always be equal to SqrtTickMath getTickAtSqrtRatio(sqrtPriceX96) if the price is on a tick boundary.
         # https://docs.uniswap.org/contracts/v3/reference/core/interfaces/pool/IUniswapV3PoolState
 
-        currentPrice = self.pool_contract.functions.slot0().call()[1]
+        currentPrice = self.pool_contract.functions.slot0().call()[0]
         # Convert price to decimal
         return self.tokenManager.sqrt_price_x_96_to_price(currentPrice)
 
