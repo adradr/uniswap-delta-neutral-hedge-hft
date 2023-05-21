@@ -1,13 +1,11 @@
 import argparse
 import os
-
+import logging
 from dotenv import load_dotenv
-
-load_dotenv()
-
 from trading_engine import api, engine
 
 # Create parser
+load_dotenv()
 parser = argparse.ArgumentParser(description="Trading engine API")
 
 # Add arguments
@@ -106,6 +104,13 @@ if args.allowed_users_passwords is not None:
     args.allowed_users_passwords = [
         tuple(pair.split(",")) for pair in args.allowed_users_passwords.split()
     ]
+
+# Setup logging
+logging.basicConfig(
+    level=logging.DEBUG if args.debug else logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s %(threadName)s : %(message)s",
+)
+
 
 # Create trading engine
 trading_engine = engine.TradingEngine(
