@@ -1,8 +1,16 @@
-import logging
 import time
+import logging
+import datetime
+
 
 from flask import Flask, jsonify, request
-from flask_jwt_extended import JWTManager, create_access_token, jwt_required
+from flask_jwt_extended import (
+    JWTManager,
+    create_access_token,
+    create_refresh_token,
+    jwt_required,
+    get_jwt_identity,
+)
 from trading_engine import engine
 
 
@@ -10,8 +18,9 @@ class TradingEngineAPI:
     def __init__(
         self,
         engine: engine.TradingEngine,
-        jwt_secret_key: str,
         allowed_users_passwords: list[tuple[str, str]],
+        jwt_secret_key: str,
+        jwt_access_token_expires: int,
         host: str = "0.0.0.0",
         port: int = 5000,
         debug: bool = False,
@@ -22,7 +31,11 @@ class TradingEngineAPI:
         self.debug = debug
         self.app = Flask(__name__)
         self.app.config["JWT_SECRET_KEY"] = jwt_secret_key
+        self.app.config["JWT_ACCESS_TOKEN_EXPIRES"] = datetime.timedelta(
+            minutes=jwt_access_token_expires
+        )
         self.jwt = JWTManager(self.app)
+        self.allowed_users_passwords = allowed_users_passwords
         self.logger = logging.getLogger(__name__)  # Retrieve the logger object
 
         # Set log level based on debug flag
@@ -46,12 +59,29 @@ class TradingEngineAPI:
                     401,
                 )
             # Check if user is allowed to login
-            if (username, password) not in allowed_users_passwords:
+            if (username, password) not in self.allowed_users_passwords:
                 return (
                     jsonify({"status": "error", "message": "Invalid credentials"}),
                     401,
                 )
-            access_token = create_access_token(identity=username)
+            access_token = create_access_token(identity=username, fresh=True)
+            refresh_token = create_refresh_token(identity=username)
+            return (
+                jsonify(
+                    {
+                        "status": "success",
+                        "access_token": access_token,
+                        "refresh_token": refresh_token,
+                    }
+                ),
+                200,
+            )
+
+        @self.app.route("/refresh", methods=["POST"])
+        @jwt_required(refresh=True)
+        def refresh():
+            identity = get_jwt_identity()
+            access_token = create_access_token(identity=identity)
             return jsonify({"status": "success", "access_token": access_token}), 200
 
         @self.app.route("/start", methods=["POST"])

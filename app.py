@@ -18,6 +18,12 @@ parser.add_argument(
     default=os.getenv("JWT_SECRET_KEY"),
 )
 parser.add_argument(
+    "--jwt-access-token-expires",
+    type=int,
+    help="The expiration time in minutes for access tokens",
+    default=os.getenv("JWT_ACCESS_TOKEN_EXPIRES"),
+)
+parser.add_argument(
     "--allowed-users-passwords",
     type=str,
     nargs="+",
@@ -95,6 +101,12 @@ parser.add_argument(
 # Parse arguments
 args = parser.parse_args()
 
+# Cast user and password pairs to tuples
+if args.allowed_users_passwords is not None:
+    args.allowed_users_passwords = [
+        tuple(pair.split(",")) for pair in args.allowed_users_passwords.split()
+    ]
+
 # Create trading engine
 trading_engine = engine.TradingEngine(
     poolAddress=args.pool_address,
@@ -110,6 +122,7 @@ trading_engine = engine.TradingEngine(
 trading_api = api.TradingEngineAPI(
     engine=trading_engine,
     jwt_secret_key=args.jwt_secret_key,
+    jwt_access_token_expires=args.jwt_access_token_expires,
     allowed_users_passwords=args.allowed_users_passwords,
     host=args.host,
     port=args.port,
