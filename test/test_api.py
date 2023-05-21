@@ -30,11 +30,13 @@ def test_engine():
 @pytest.fixture(scope="module")
 def test_app(test_engine):
     jwt_secret_key = "test_secret_key"
+    jwt_access_token_expires = 300
     allowed_users_passwords = [("user1", "pass1"), ("user2", "pass2")]
     return TradingEngineAPI(
         test_engine,
-        jwt_secret_key,
         allowed_users_passwords,
+        jwt_secret_key,
+        jwt_access_token_expires,
         debug=True,
     )
 
