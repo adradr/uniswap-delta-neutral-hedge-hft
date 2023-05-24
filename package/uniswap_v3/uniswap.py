@@ -14,35 +14,19 @@ from web3.contract import Contract, ContractFunction
 from web3.exceptions import BadFunctionCallOutput, ContractLogicError
 from web3.types import Nonce, TxParams, TxReceipt, Wei
 
-from .constants import (
-    ETH_ADDRESS,
-    MAX_TICK,
-    MAX_UINT_128,
-    MIN_TICK,
-    WETH9_ADDRESS,
-    _factory_contract_addresses_v1,
-    _factory_contract_addresses_v2,
-    _netid_to_name,
-    _router_contract_addresses_v2,
-    _tick_bitmap_range,
-    _tick_spacing,
-)
+from .constants import (ETH_ADDRESS, MAX_TICK, MAX_UINT_128, MIN_TICK,
+                        WETH9_ADDRESS, _factory_contract_addresses_v1,
+                        _factory_contract_addresses_v2, _netid_to_name,
+                        _router_contract_addresses_v2, _tick_bitmap_range,
+                        _tick_spacing)
 from .decorators import check_approval, supports
 from .exceptions import InsufficientBalance, InvalidToken
 from .token import ERC20Token
 from .types import AddressLike
-from .util import (
-    _addr_to_str,
-    _get_eth_simple_cache_middleware,
-    _load_contract,
-    _load_contract_erc20,
-    _str_to_addr,
-    _validate_address,
-    chunks,
-    encode_sqrt_ratioX96,
-    is_same_address,
-    nearest_tick,
-)
+from .util import (_addr_to_str, _get_eth_simple_cache_middleware,
+                   _load_contract, _load_contract_erc20, _str_to_addr,
+                   _validate_address, chunks, encode_sqrt_ratioX96,
+                   is_same_address, nearest_tick)
 
 logger = logging.getLogger(__name__)
 
