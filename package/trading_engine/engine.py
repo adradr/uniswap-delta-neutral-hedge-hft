@@ -12,7 +12,7 @@ class TradingEngine:
         walletAddress: ChecksumAddress,
         walletPrivateKey: str,
         range_percentage: int,
-        capital_percentage: int,
+        token0_capital: int,
         provider: str,
         debug: bool = False,
     ):
@@ -24,7 +24,7 @@ class TradingEngine:
             walletAddress (ChecksumAddress): Address of the wallet to use
             walletPrivateKey (str): Private key of the wallet
             range_percentage (int): Range of the position in percentage (e.g. 1 for 1%)
-            capital_percentage (int): Percentage of the capital to use (e.g. 10 for 10%)
+            token0_capital (int): How much of the funds should be used to provide liquidity for token0 (e.g. 1000 for 1000USDC). Note: it will be ~doubled for the total position size
             provider (str): Provider URL of the blockchain RPC, e.g. infura
             debug (bool, optional): Whether to enable debug logging. Defaults to False.
         """
@@ -42,7 +42,7 @@ class TradingEngine:
             walletAddress=walletAddress,
             walletPrivateKey=walletPrivateKey,
             range_percentage=range_percentage,
-            capital_percentage=capital_percentage,
+            token0_capital=token0_capital,
             provider=provider,
         )
 

@@ -1,12 +1,17 @@
 import datetime
 import logging
 import time
+from typing import Tuple, Union
 
 from eth_typing.evm import ChecksumAddress
 from uniswap_math import TokenManagement
 from uniswap_v3.uniswap import Uniswap
 from web3 import Web3
 from web3.types import TxReceipt
+
+
+class InsufficientFunds(Exception):
+    pass
 
 
 class Web3Manager:
@@ -23,7 +28,7 @@ class Web3Manager:
         walletAddress: ChecksumAddress,
         walletPrivateKey: str,
         range_percentage: int,
-        capital_percentage: int,
+        token0_capital: int,
         provider: str,
         debug: bool = False,
     ):
@@ -31,11 +36,11 @@ class Web3Manager:
 
         Args:
             poolAddress (ChecksumAddress): The address of the pool where liq. should be provided
-            poolFee (int): The fee of the pool (probably can use a hardcoded value)
+            poolFee (int): The fee of the pool for swapping tokens (probably can use a hardcoded value)
             walletAddress (ChecksumAddress): The address of the wallet where the funds are located at
             walletPrivateKey (str): The private key of the wallet
             range_percentage (int): How wide the range should be in percentage (e.g. 1 for 1%)
-            capital_percentage (int): How much of the funds should be used to provide liquidity
+            token0_capital (int): How much of the funds should be used to provide liquidity for token0 (e.g. 1000 for 1000USDC). Note: it will be ~doubled for the total position size
             provider (str): The provider of the blockchain, e.g. infura
             debug (bool, optional): Whether to enable debug logging. Defaults to False.
 
@@ -46,7 +51,7 @@ class Web3Manager:
         self.walletAddress = walletAddress
         self.walletPrivateKey = walletPrivateKey
         self.range_percentage = range_percentage
-        self.capital_percentage = capital_percentage
+        self.token0_capital = token0_capital
         self.provider = provider
 
         self.logger = logging.getLogger(__name__)  # Retrieve the logger object
@@ -71,7 +76,9 @@ class Web3Manager:
                 "tokenID": int,
                 "swapTxRc": TxReceipt,
                 "openTxRc": TxReceipt,
-                "closeTxRc": TxReceipt,
+                "removeTxRc": TxReceipt,
+                "collectTxRc": TxReceipt,
+                "burnTxRc": TxReceipt,
                 "last_update": datetime,
             }
         ]
@@ -98,14 +105,33 @@ class Web3Manager:
         self.token0_contract = self.uniswap.token0Contract
         self.token1_contract = self.uniswap.token1Contract
         self.pool_contract = self.uniswap.pool
+        self.token0_symbol = self.token0_contract.functions.symbol().call()
+        self.token1_symbol = self.token1_contract.functions.symbol().call()
 
         # Initialize tokenManager
         self.tokenManager = TokenManagement.TokenManager(
-            token0=self.decimal0, token1=self.decimal1
+            token0_decimal=self.decimal0, token1_decimal=self.decimal1
         )
 
         # Get token amount from pool address
         self.update_balance()
+
+        # Log pool info line by line
+        self.logger.info("Pool info:")
+        self.logger.info(f"Pool address: {self.poolAddress}")
+        self.logger.info(f"Swap pool fee: {self.poolFee}")
+        self.logger.info(f"Wallet address: {self.walletAddress}")
+        self.logger.info(f"Range percentage: {self.range_percentage}")
+        self.logger.info(f"Token0 capital: {self.token0_capital}")
+        self.logger.info(f"Provider: {self.provider}")
+        self.logger.info(f"Decimal0: {self.decimal0}")
+        self.logger.info(f"Decimal1: {self.decimal1}")
+        self.logger.info(f"Token0: {self.token0}")
+        self.logger.info(f"Token1: {self.token1}")
+        self.logger.info(f"Token0 symbol: {self.token0_symbol}")
+        self.logger.info(f"Token1 symbol: {self.token1_symbol}")
+        self.logger.info(f"Token0 balance: {self.token0Balance}")
+        self.logger.info(f"Token1 balance: {self.token1Balance}")
 
     def update_balance(self):
         """Updates the balances of the wallet for token0 and token1"""
@@ -136,8 +162,19 @@ class Web3Manager:
         # https://docs.uniswap.org/contracts/v3/reference/core/interfaces/pool/IUniswapV3PoolState
 
         currentPrice = self.pool_contract.functions.slot0().call()[0]
-        # Convert price to decimal
-        return self.tokenManager.sqrt_price_x_96_to_price(currentPrice)
+        # Decode the square root price
+        sqrt_price = currentPrice / self.tokenManager.Q96
+
+        # square it to get USDC/WETH
+        price_usdc_per_weth = sqrt_price**2
+
+        # Invert it to get WETH/USDC
+        price_weth_per_usdc = 1 / price_usdc_per_weth
+
+        # Adjust for decimals
+        decimal_diff = abs(self.decimal0 - self.decimal1)
+        price_weth_per_usdc = price_weth_per_usdc * 10**decimal_diff
+        return price_weth_per_usdc
 
     def parseTxReceiptForTokenId(self, rc: TxReceipt) -> int:
         """Parses a tx receipt for the tokenId
@@ -156,7 +193,7 @@ class Web3Manager:
         )
         return logs_transfer[0]["args"]["tokenId"]
 
-    def swap_amounts(self) -> TxReceipt:
+    def swap_amounts(self) -> Union[TxReceipt, None]:
         """Swaps the tokens in the wallet for the token with the least amount
 
         Raises:
@@ -165,21 +202,94 @@ class Web3Manager:
         Returns:
             TxReceipt: Transaction receipt of the swap
         """
-        # Calculate swap amount
-        amount0 = self.token0Balance
-        amount1 = self.token1Balance
-        if amount0 == 0:
-            swapAmount = self.tokenManager.get_swap_amount(amount=amount0)
-            input_token = self.token0
-            output_token = self.token1
-        elif amount1 == 0:
-            swapAmount = self.tokenManager.get_swap_amount(amount=amount1)
-            input_token = self.token1
-            output_token = self.token0
-        else:
-            raise Exception("Both or none of the token amounts are 0")
+        # Get existing token amounts
+        existing_amount0 = self.token0Balance
+        existing_amount1 = self.token1Balance
+        existing_amount0_decimal = (
+            existing_amount0 / 10**self.tokenManager.token0_decimal
+        )
+        existing_amount1_decimal = (
+            existing_amount1 / 10**self.tokenManager.token1_decimal
+        )
 
-        # TODO: need to verify if this swap is correct
+        # Get required token amounts and multiply by 1.01 to account for swap-mint slippage
+        required_amount0 = self.amount0 * 1.01
+        required_amount1 = self.amount1 * 1.01
+        required_amount0_decimal = (
+            required_amount0 / 10**self.tokenManager.token0_decimal
+        )
+        required_amount1_decimal = (
+            required_amount1 / 10**self.tokenManager.token1_decimal
+        )
+
+        # Get current price
+        current_price = self.get_current_price()
+
+        # Log current price and token amounts
+        self.logger.info(f"Current price: {current_price}")
+        self.logger.info(
+            f"Existing/Required amount for {self.token0_symbol}: "
+            f"{existing_amount0_decimal } / {required_amount0_decimal}"
+        )
+        self.logger.info(
+            f"Existing/Required amount for {self.token1_symbol}: "
+            f"{existing_amount1_decimal} / {required_amount1_decimal}"
+        )
+
+        # Both token amounts are equal or more than required
+        # NO SWAP
+        if (
+            existing_amount0 >= required_amount0
+            and existing_amount1 >= required_amount1
+        ):
+            self.logger.info("No swap required")
+            return None
+
+        # Both token amounts are less than required
+        # RAISE ERROR
+        elif (
+            existing_amount0 < required_amount0 and existing_amount1 < required_amount1
+        ):
+            e_msg = "Both token amounts are less than required"
+            self.logger.error(e_msg)
+            raise InsufficientFunds(e_msg)
+
+        # Token0 amount is less than required
+        # SWAP TOKEN0 FOR TOKEN1
+        elif existing_amount0 < required_amount0:
+            # Check if token1 amount is enough for swap and required_amount1
+            if existing_amount1 >= required_amount1 + (
+                existing_amount1 / current_price
+            ):
+                # Get swap amounts token1 for token0
+                swapAmount = required_amount0 - existing_amount0
+                input_token = self.token1
+                output_token = self.token0
+            else:
+                e_msg = "Token1 amount is not enough for swap and required_amount1"
+                self.logger.error(e_msg)
+                raise InsufficientFunds(e_msg)
+
+        # Token1 amount is less than required
+        # SWAP TOKEN1 FOR TOKEN0
+        elif existing_amount1 < required_amount1:
+            # Check if token0 amount is enough for swap and required_amount0
+            if existing_amount0 >= required_amount0 + (
+                existing_amount0 / current_price
+            ):
+                # Get swap amounts token0 for token1
+                swapAmount = required_amount1 - existing_amount1
+                input_token = self.token0
+                output_token = self.token1
+            else:
+                e_msg = "Token0 amount is not enough for swap and required_amount0"
+                self.logger.error(e_msg)
+                raise InsufficientFunds(e_msg)
+
+        else:
+            self.logger.error("Unexpected error")
+            raise Exception("Unexpected error")
+
         # Swap tokens
         hex = self.uniswap.check_approval_and_make_trade(
             input_token=input_token,
@@ -235,36 +345,42 @@ class Web3Manager:
         Returns:
             TxReceipt: Transaction receipt of the open position
         """
+        # Get current price
+        current_price = self.get_current_price()
+
+        # Calculate ticks from currentPrice
+        (
+            range_low,
+            current_price,
+            range_high,
+            tick_low,
+            current_tick,
+            tick_high,
+        ) = self.tokenManager.get_ranges(
+            percentage=self.range_percentage, currentPrice=current_price
+        )
+
+        # Calculate amounts
+        self.amount0, self.amount1 = self.tokenManager.calculate_amounts(
+            current_price=current_price,
+            range_low=range_low,
+            range_high=range_high,
+            total_token0_amount=self.token0_capital,
+        )
+
         # Get token amounts
         self.update_balance()
-        amount0 = self.token0Balance * (self.capital_percentage / 100)
-        amount1 = self.token1Balance * (self.capital_percentage / 100)
-
-        # Get current price
-        currentPrice = self.get_current_price()
 
         # Swap tokens
         swap_rc = self.swap_amounts()
 
-        # Calculate ticks from currentPrice
-        (
-            lowerRange,
-            currentPrice,
-            upperRange,
-            lowerTick,
-            currentTick,
-            upperTick,
-        ) = self.tokenManager.get_ranges(
-            percentage=self.range_percentage, currentPrice=currentPrice
-        )
-
         # open position at uniswap
         rc_mint = self.uniswap.check_approval_and_mint_liquidity(
             pool=self.pool_contract,
-            amount_0=amount0,
-            amount_1=amount1,
-            tick_lower=lowerTick,
-            tick_upper=upperTick,
+            amount_0=self.amount0,
+            amount_1=self.amount1,
+            tick_lower=tick_low,
+            tick_upper=tick_high,
         )
 
         # Get tokenId
@@ -273,25 +389,27 @@ class Web3Manager:
         # Save position in position_history
         self.position_history.append(
             {
-                "tick_lower": lowerTick,
-                "tick_upper": upperTick,
-                "current_tick": currentTick,
-                "initial_tick": currentTick,
-                "lower_range": lowerRange,
-                "upper_range": upperRange,
-                "current_price": currentPrice,
-                "intial_price": currentPrice,
+                "tick_lower": tick_low,
+                "tick_upper": tick_high,
+                "current_tick": current_tick,
+                "initial_tick": current_tick,
+                "lower_range": range_low,
+                "upper_range": range_high,
+                "current_price": current_price,
+                "intial_price": current_price,
                 "tokenID": tokenId,
                 "openTxRc": rc_mint,
                 "swapTxRc": swap_rc,
-                "closeTxRc": None,
+                "removeTxRc": None,
+                "collectTxRc": None,
+                "burnTxRc": None,
                 "last_update": self.get_current_time_str(),
             }
         )
 
         return rc_mint
 
-    def close_position(self) -> TxReceipt:
+    def close_position(self) -> Tuple[TxReceipt, TxReceipt, TxReceipt]:
         """Closes a position in the Uniswap V3 pool
         1. Closes the position at Uniswap V3
         2. Saves the position in the position_history list
@@ -304,11 +422,20 @@ class Web3Manager:
         """
         # Close position at uniswap
         token_id = self.position_history[-1]["tokenID"]
-        # TODO: return collect amount and save it in position history
-        close_rc = self.uniswap.close_position(tokenId=token_id)
+        (
+            receipt_remove_liquidity,
+            receipt_collect_fees,
+            receipt_burn,
+        ) = self.uniswap.close_position(tokenId=token_id)
 
         # Save position history
-        self.position_history[-1]["closeTxRc"] = close_rc
+        self.position_history[-1]["removeTxRc"] = receipt_remove_liquidity
+        self.position_history[-1]["collectTxRc"] = receipt_collect_fees
+        self.position_history[-1]["burnTxRc"] = receipt_burn
         self.position_history[-1]["last_update"] = self.get_current_time_str()
 
-        return close_rc
+        return (
+            receipt_remove_liquidity,
+            receipt_collect_fees,
+            receipt_burn,
+        )
