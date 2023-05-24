@@ -8,12 +8,12 @@ from trading_engine.engine import TradingEngine
 @pytest.fixture(scope="module")
 def test_engine():
     trading_engine = TradingEngine(
-        poolAddress="0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640",
+        poolAddress="0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640",  # type: ignore
         poolFee=500,
-        walletAddress="0x1234567890123456789012345678901234567890",
+        walletAddress="0x1234567890123456789012345678901234567890",  # type: ignore
         walletPrivateKey="0x1234567890123456789012345678901234567890123456789012345678901234",
         range_percentage=0,
-        capital_percentage=0,
+        token0_capital=0,
         provider="http://cloudflare-eth.com",
     )
 

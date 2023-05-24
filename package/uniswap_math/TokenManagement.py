@@ -183,10 +183,10 @@ class TokenManager:
 
     def calculate_amounts(
         self,
-        current_price: int,
-        range_low: int,
-        range_high: int,
-        total_token0_amount: int,
+        current_price: float,
+        range_low: float,
+        range_high: float,
+        total_token0_amount: float,
     ) -> Tuple[int, int]:
         """Calculates the amounts of token0 and token1.
         Requires to use prices in eth format e.g.: 1800 for $1800

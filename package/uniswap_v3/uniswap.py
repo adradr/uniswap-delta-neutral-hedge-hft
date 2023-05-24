@@ -14,19 +14,35 @@ from web3.contract import Contract, ContractFunction
 from web3.exceptions import BadFunctionCallOutput, ContractLogicError
 from web3.types import Nonce, TxParams, TxReceipt, Wei
 
-from .constants import (ETH_ADDRESS, MAX_TICK, MAX_UINT_128, MIN_TICK,
-                        WETH9_ADDRESS, _factory_contract_addresses_v1,
-                        _factory_contract_addresses_v2, _netid_to_name,
-                        _router_contract_addresses_v2, _tick_bitmap_range,
-                        _tick_spacing)
+from .constants import (
+    ETH_ADDRESS,
+    MAX_TICK,
+    MAX_UINT_128,
+    MIN_TICK,
+    WETH9_ADDRESS,
+    _factory_contract_addresses_v1,
+    _factory_contract_addresses_v2,
+    _netid_to_name,
+    _router_contract_addresses_v2,
+    _tick_bitmap_range,
+    _tick_spacing,
+)
 from .decorators import check_approval, supports
 from .exceptions import InsufficientBalance, InvalidToken
 from .token import ERC20Token
 from .types import AddressLike
-from .util import (_addr_to_str, _get_eth_simple_cache_middleware,
-                   _load_contract, _load_contract_erc20, _str_to_addr,
-                   _validate_address, chunks, encode_sqrt_ratioX96,
-                   is_same_address, nearest_tick)
+from .util import (
+    _addr_to_str,
+    _get_eth_simple_cache_middleware,
+    _load_contract,
+    _load_contract_erc20,
+    _str_to_addr,
+    _validate_address,
+    chunks,
+    encode_sqrt_ratioX96,
+    is_same_address,
+    nearest_tick,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -1234,7 +1250,7 @@ class Uniswap:
         amount0Min: int = 0,
         amount1Min: int = 0,
         deadline: Union[int, None] = None,
-    ) -> TxReceipt:
+    ) -> Tuple[TxReceipt, TxReceipt, TxReceipt]:
         """
         remove all liquidity from the position associated w/ tokenId, collect fees, and burn token.
         """
@@ -1266,9 +1282,13 @@ class Uniswap:
         tx_burn = self.nonFungiblePositionManager.functions.burn(tokenId).transact(
             {"from": _addr_to_str(self.address)}
         )
-        receipt = self.w3.eth.wait_for_transaction_receipt(tx_burn)
+        receipt_remove_liquidity = self.w3.eth.wait_for_transaction_receipt(
+            tx_remove_liquidity
+        )
+        receipt_collect_fees = self.w3.eth.wait_for_transaction_receipt(tx_collect_fees)
+        receipt_burn = self.w3.eth.wait_for_transaction_receipt(tx_burn)
 
-        return receipt
+        return (receipt_remove_liquidity, receipt_collect_fees, receipt_burn)
 
     # Below two functions derived from: https://stackoverflow.com/questions/71814845/how-to-calculate-uniswap-v3-pools-total-value-locked-tvl-on-chain
     def get_token0_in_pool(
