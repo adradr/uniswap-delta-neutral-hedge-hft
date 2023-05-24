@@ -219,3 +219,25 @@ class TokenManager:
         amount1 = self.calc_amount1(liq, sqrtp_low, sqrtp_cur)
 
         return amount1, amount0
+
+    def get_ranges(
+        self, percentage: int, currentPrice: float
+    ) -> Tuple[float, float, float, int, int, int]:
+        """
+        Gives the lower and upper ranges of a soon to be created pool, given a percentage,
+        and current price.
+
+        Args:
+            percentage (int): How wide should the bin be to provide liqudity in, 0-100
+            currentPrice (float): The current price of the token
+
+        Returns:
+            Tuple[float, float, float, int, int, int]: a tuple, with lowerRange(price), currentPrice(price), upperRange(price),
+        """
+        upperRange = currentPrice * (1 + (percentage / 100))
+        lowerRange = currentPrice * (1 - (percentage / 100))
+        upperTick = self.price_to_tick(lowerRange)
+        lowerTick = self.price_to_tick(upperRange)
+        currentTick = self.price_to_tick(currentPrice)
+
+        return (lowerRange, currentPrice, upperRange, lowerTick, currentTick, upperTick)
