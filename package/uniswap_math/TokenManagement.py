@@ -235,7 +235,7 @@ class TokenManager:
             Tuple[float, float, float, int, int, int]: a tuple, with lowerRange(price), currentPrice(price), upperRange(price),
         """
         upperRange = currentPrice * (1 + (percentage / 100))
-        lowerRange = currentPrice * (1 - (percentage / 100))
+        lowerRange = currentPrice / (1 + (percentage / 100))
         upperTick = self.price_to_tick(lowerRange)
         lowerTick = self.price_to_tick(upperRange)
         currentTick = self.price_to_tick(currentPrice)
