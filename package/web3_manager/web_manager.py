@@ -202,7 +202,7 @@ class Web3Manager:
         Returns:
             TxReceipt: Transaction receipt of the swap
         """
-        # Calculate swap amount
+        # Get existing token amounts
         existing_amount0 = self.token0Balance
         existing_amount1 = self.token1Balance
         existing_amount0_decimal = (
@@ -211,8 +211,10 @@ class Web3Manager:
         existing_amount1_decimal = (
             existing_amount1 / 10**self.tokenManager.token1_decimal
         )
-        required_amount0 = self.amount0
-        required_amount1 = self.amount1
+
+        # Get required token amounts and multiply by 1.01 to account for swap-mint slippage
+        required_amount0 = self.amount0 * 1.01
+        required_amount1 = self.amount1 * 1.01
         required_amount0_decimal = (
             required_amount0 / 10**self.tokenManager.token0_decimal
         )
@@ -220,8 +222,10 @@ class Web3Manager:
             required_amount1 / 10**self.tokenManager.token1_decimal
         )
 
+        # Get current price
         current_price = self.get_current_price()
 
+        # Log current price and token amounts
         self.logger.info(f"Current price: {current_price}")
         self.logger.info(
             f"Existing/Required amount for {self.token0_symbol}: "
