@@ -11,7 +11,7 @@ from typing import Tuple
 
 
 class TokenManager:
-    def __init__(self, token0: int, token1: int):
+    def __init__(self, token0_decimal: int, token1_decimal: int):
         """Initializes the TokenManager class
 
         Additional information:
@@ -25,11 +25,11 @@ class TokenManager:
             so by taking the base 1.0001 logarithm of the current price, we get the tick at that price
 
         Args:
-            token0 (int): decimals of token0
-            token1 (int): decimals of token1
+            token0_decimal (int): decimals of token0
+            token1_decimal (int): decimals of token1
         """
-        self.token0 = token0
-        self.token1 = token1
+        self.token0_decimal = token0_decimal
+        self.token1_decimal = token1_decimal
         self.Q96: int = 2**96
 
     def tick_to_sqrt_price_x_96(self, tick: int) -> int:
@@ -65,7 +65,7 @@ class TokenManager:
         Returns:
             int: The converted sqrt price value
         """
-        return math.sqrt((self.token0 / self.token1) / price) * self.Q96
+        return math.sqrt((self.token0_decimal / self.token1_decimal) / price) * self.Q96
 
     def sqrt_price_x_96_to_price(self, sqrt_price_x_96: int) -> float:
         """Converts a sqrt price to a price, useable by Uniswap V3
@@ -76,7 +76,9 @@ class TokenManager:
         Returns:
             float: The converted price value
         """
-        return (1 / ((sqrt_price_x_96 / self.Q96) ** 2)) * (self.token0 / self.token1)
+        return (1 / ((sqrt_price_x_96 / self.Q96) ** 2)) * (
+            self.token0_decimal / self.token1_decimal
+        )
 
     def tick_to_price(self, tick: int) -> float:
         """Converts a tick to a price, useable by Uniswap V3
@@ -104,118 +106,116 @@ class TokenManager:
         tick = self.sqrt_price_x_96_to_tick(sqrt_price)
         return tick
 
-    def get_ranges(
-        self, percentage: int, currentPrice: float
-    ) -> Tuple[float, float, float, int, int, int]:
+    def liquidity0(self, amount: int, pa: int, pb: int) -> float:
         """
-        Gives the lower and upper ranges of a soon to be created pool, given a percentage,
-        and current price.
+        Calculates the liquidity value for token0.
 
         Args:
-            percentage (int): How wide should the bin be to provide liqudity in, 0-100
-            currentPrice (float): The current price of the token
+            amount (float): The amount of tokens.
+            pa (float): The price of token A.
+            pb (float): The price of token B.
 
         Returns:
-            Tuple[float, float, float, int, int, int]: a tuple, with lowerRange(price), currentPrice(price), upperRange(price),
+            float: The liquidity value for token0.
         """
-        upperRange = currentPrice * (1 + (percentage / 100))
-        lowerRange = currentPrice * (1 - (percentage / 100))
-        upperTick = self.price_to_tick(lowerRange)
-        lowerTick = self.price_to_tick(upperRange)
-        currentTick = self.price_to_tick(currentPrice)
+        if pa > pb:
+            pa, pb = pb, pa
+        return (amount * (pa * pb) / self.Q96) / (pb - pa)
 
-        return (lowerRange, currentPrice, upperRange, lowerTick, currentTick, upperTick)
-
-    def get_liquidity(self, token0Amount: int, token1Amount: int) -> int:
-        """Returns the total liqudity, based on the amount of each token in the pool.
+    def liquidity1(self, amount: int, pa: int, pb: int) -> float:
+        """
+        Calculates the liquidity value for token1.
 
         Args:
-            token0Amount (int): The amount of token0
-            token1Amount (int): The amount of token1
+            amount (float): The amount of tokens.
+            pa (float): The price of token A.
+            pb (float): The price of token B.
 
         Returns:
-            int: The total liqudity, L
+            float: The liquidity value for token1.
         """
+        if pa > pb:
+            pa, pb = pb, pa
+        return amount * self.Q96 / (pb - pa)
 
-        return 0
-
-    def get_minY(self, amountX: int, price: float, percentage: int) -> int:
+    def calc_amount0(self, liq: int, pa: int, pb: int) -> int:
         """
-        Calculates how much of asset y we need to create a new pool, given the current price.
-        This function calculates the price ranges from the percentage.
+        Calculates the amount of token0.
 
         Args:
-            amountX (int):  Amount of token X
-            price (float): Current price of token X
-            percentage (int): Percentage of the price range (0-100)
+            liq (float): The liquidity value.
+            pa (float): The price of token A.
+            pb (float): The price of token B.
 
         Returns:
-            int: Amount of token Y
+            int: The amount of token0.
         """
+        if pa > pb:
+            pa, pb = pb, pa
+        return int(liq * self.Q96 * (pb - pa) / pa / pb)
 
-        # Lower range of the price
-        pa = price * (1 - (percentage / 100))
-
-        # Upper range of the price
-        pb = price * (1 + (percentage / 100))
-
-        # Calculate the liqudity for the top half of the range
-        L_x = amountX * (
-            (math.sqrt(price) * math.sqrt(pb)) / (math.sqrt(pb) - math.sqrt(price))
-        )
-
-        # Use L_x to calculate amountY
-        amountY = L_x * (math.sqrt(price) - math.sqrt(pa))
-        return int(amountY)
-
-    def get_minX(self, amountY: int, price: float, percentage: int) -> int:
+    def calc_amount1(self, liq: int, pa: int, pb: int) -> int:
         """
-        Calculates how much of asset x we need to create a new pool, given the current price.
-        This function calculates the price ranges from the percentage.
+        Calculates the amount of token1.
 
         Args:
-            amountY (int): Amount of token Y
-            price (float): Current price of token X
-            percentage (int): Percentage of the price range (0-100)
+            liq (float): The liquidity value.
+            pa (float): The price of token A.
+            pb (float): The price of token B.
 
         Returns:
-            int: Amount of token X
+            int: The amount of token1.
         """
+        if pa > pb:
+            pa, pb = pb, pa
+        return int(liq * (pb - pa) / self.Q96)
 
-        # Lower range of the price
-        pa = price * (1 - (percentage / 100))
-
-        # Upper range of the price
-        pb = price * (1 + (percentage / 100))
-
-        # Calculate the liqudity for the top half of the range
-        L_y = amountY * (math.sqrt(pb) - math.sqrt(pa))
-
-        # Use L_x to calculate amountY
-        amountX = L_y * (math.sqrt(price) - math.sqrt(pa))
-        return int(amountX)
-
-    def get_swap_amount(self, amount: int) -> int:
-        """
-        It is possible to calculate the other amount needed from the price range and the amount of one of the tokens.
-        Since one of the tokens will always be a smaller amount, it is best to swap a bit more then half to the other, and create the pool
-        that way
+    def price_to_sqrtp(self, price: float) -> int:
+        """Converts a price to a sqrt price, useable by Uniswap V3
 
         Args:
-            amount (int): Amount of token X
+            price (float): The price to be converted
 
         Returns:
-            int: Amount of token to swap
+            float: The converted sqrt price value
         """
-        return int(amount * 0.48)
+        return int(math.sqrt(price) * self.Q96)
 
+    def calculate_amounts(
+        self,
+        current_price: int,
+        range_low: int,
+        range_high: int,
+        total_token0_amount: int,
+    ) -> Tuple[int, int]:
+        """Calculates the amounts of token0 and token1.
+        Requires to use prices in eth format e.g.: 1800 for $1800
 
-# Do we need this?
-# """
-# Calculates how much of each token you need to provide to create a pool, given your total liqudity.
-# The total liquidity is the amount of funds you have, in total, denominated in the other. For example,
-# if you have 3 ETH, and 5000 USDC, and 1 ETH = 1500 USDC, then your total liqudity is 9500 USDC.
+        Args:
+            current_price (int): Current price for the pool
+            range_low (int): Price range low
+            range_high (int): Price range high
+            total_token0_amount (int): Total amount of token0
 
-# @param liqudity: The total value of your funds
-# @returns: Amount of each token you need to create the pool
-# """
+        Returns:
+            Tuple[int, int]: Amounts of token1 and token0 in wei
+        """
+        # calculate sqrt price
+        sqrtp_low = self.price_to_sqrtp(range_low)
+        sqrtp_cur = self.price_to_sqrtp(current_price)
+        sqrtp_upp = self.price_to_sqrtp(range_high)
+
+        # calculate liquidity
+        eth = 10**self.token1_decimal
+        amount_eth = 1 * eth
+        amount_usdc = total_token0_amount * eth
+
+        liq0 = self.liquidity0(amount_eth, sqrtp_cur, sqrtp_upp)
+        liq1 = self.liquidity1(amount_usdc, sqrtp_cur, sqrtp_low)
+        liq = int(min(liq0, liq1))
+
+        # calculate amount0 and amount1
+        amount0 = self.calc_amount0(liq, sqrtp_upp, sqrtp_cur)
+        amount1 = self.calc_amount1(liq, sqrtp_low, sqrtp_cur)
+
+        return amount1, amount0
