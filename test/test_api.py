@@ -65,7 +65,7 @@ def test_start_engine(test_app):
             "/login", json={"username": "user1", "password": "pass1"}
         ).json["access_token"]
         headers = {"Authorization": f"Bearer {access_token}"}
-        response = client.post("/start", headers=headers)
+        response = client.get("/start", headers=headers)
         assert response.status_code == 200
         assert response.json["status"] == "success"
         assert response.json["message"] == "Started TradingEngine"
@@ -78,7 +78,7 @@ def test_stop_engine(test_app):
             "/login", json={"username": "user1", "password": "pass1"}
         ).json["access_token"]
         headers = {"Authorization": f"Bearer {access_token}"}
-        response = client.post("/stop", headers=headers)
+        response = client.get("/stop", headers=headers)
         assert response.status_code == 200
         assert response.json["status"] == "success"
         assert response.json["message"] == "Stopped TradingEngine"
@@ -91,7 +91,7 @@ def test_update_engine(test_app):
             "/login", json={"username": "user1", "password": "pass1"}
         ).json["access_token"]
         headers = {"Authorization": f"Bearer {access_token}"}
-        response = client.post("/update-engine", headers=headers)
+        response = client.get("/update-engine", headers=headers)
         assert response.status_code == 404
         assert response.json["status"] == "error"
         assert response.json["message"] == "Engine is not running"
