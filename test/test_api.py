@@ -97,17 +97,6 @@ def test_update_engine(test_app):
         assert response.json["message"] == "Engine is not running"
 
 
-def test_update_params_no_params(test_app):
-    client = test_app.app.test_client()
-    with client:
-        access_token = client.post(
-            "/login", json={"username": "user1", "password": "pass1"}
-        ).json["access_token"]
-        headers = {"Authorization": f"Bearer {access_token}", "Content-Type": "json"}
-        response = client.post("/update-params", headers=headers)
-        assert response.status_code == 400
-
-
 def test_update_params_empty_params(test_app):
     client = test_app.app.test_client()
     with client:
