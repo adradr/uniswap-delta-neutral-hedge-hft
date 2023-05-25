@@ -8,7 +8,6 @@ from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 '''
 TODO:
 add error handling for empty json in update_params
-messages not getting broadcasted to chat, just logged to cli
 '''
 
 API_URL = "http://<your-api-url>"
@@ -38,7 +37,7 @@ def get_jwt_token(username, password):
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if DEBUG_MODE == True:
-        update.message.reply_text("Engine Started - DEBUG MODE")
+        await update.message.reply_text("Engine Started - DEBUG MODE")
     else:
         resp = requests.post(
             f"{API_URL}/start",
@@ -50,7 +49,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 async def stop(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if DEBUG_MODE == True:
-        update.message.reply_text("Engine Stopped - DEBUG MODE")
+        await update.message.reply_text("Engine Stopped - DEBUG MODE")
     else:
         resp = requests.post(
             f"{API_URL}/stop",
@@ -62,7 +61,7 @@ async def stop(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if DEBUG_MODE == True:
-        update.message.reply_text("Engine stats requested - DEBUG MODE")
+        await update.message.reply_text("Engine stats requested - DEBUG MODE")
         #TODO: Add mock engine stats, maybe import webmanager
     else:
         resp = requests.get(
@@ -76,7 +75,7 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 async def update_engine(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if DEBUG_MODE == True:
-        update.message.reply_text("Engine Updated! - DEBUG MODE")
+        await update.message.reply_text("Engine Updated! - DEBUG MODE")
     else:
         resp = requests.post(
             f"{API_URL}/update",
@@ -87,7 +86,12 @@ async def update_engine(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
 async def update_params(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     #Get the parameters from the command text
-    command, json_str = update.message.text.split(maxsplit=1)
+    parts = update.message.text.split(maxsplit=1)
+    if len(parts) < 2:
+        await update.message.reply_text("No parameters provided!")
+        return
+
+    command, json_str = parts
     
     # Convert the JSON string into a dict
     params_dict = json.loads(json_str)
@@ -97,7 +101,7 @@ async def update_params(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         return
 
     if DEBUG_MODE == True:
-        update.message.reply_text(f"Parameters Received: {params_dict} \n - DEBUG MODE")
+        await update.message.reply_text(f"Parameters Received: {params_dict} \n - DEBUG MODE")
     else:
         # Use the parameters in the API request
         resp = requests.post(
