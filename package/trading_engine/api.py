@@ -3,9 +3,13 @@ import logging
 import time
 
 from flask import Flask, jsonify, request
-from flask_jwt_extended import (JWTManager, create_access_token,
-                                create_refresh_token, get_jwt_identity,
-                                jwt_required)
+from flask_jwt_extended import (
+    JWTManager,
+    create_access_token,
+    create_refresh_token,
+    get_jwt_identity,
+    jwt_required,
+)
 from trading_engine import engine
 
 
@@ -128,7 +132,7 @@ class TradingEngineAPI:
                 200,
             )
 
-        @self.app.route("/update", methods=["POST"])
+        @self.app.route("/update-engine", methods=["POST"])
         @jwt_required()
         def update_engine():
             # Only update if engine is running
@@ -139,13 +143,41 @@ class TradingEngineAPI:
                 )
 
             # Update engine
-            self.engine.update()
+            self.engine.update_engine()
             logging.info(f"Updated {type(self.engine).__name__}")
             return (
                 jsonify(
                     {
                         "status": "success",
                         "message": f"Updated {type(self.engine).__name__}",
+                    }
+                ),
+                200,
+            )
+
+        @self.app.route("/update-params", methods=["GET"])
+        @jwt_required()
+        def update_params():
+            # Get params from request
+            params = request.json
+            if not params:
+                return (
+                    jsonify(
+                        {
+                            "status": "error",
+                            "message": "Params are required",
+                        }
+                    ),
+                    401,
+                )
+            # Update params
+            self.engine.update_params(params)
+            logging.info(f"Updated params for {type(self.engine).__name__}")
+            return (
+                jsonify(
+                    {
+                        "status": "success",
+                        "message": f"Updated params for {type(self.engine).__name__}",
                     }
                 ),
                 200,

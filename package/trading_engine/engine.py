@@ -60,7 +60,7 @@ class TradingEngine:
         self.logger.info("Stopped trading engine")
         self.logger.info("Closed position: %s", self.web3_manager.position_history[-1])
 
-    def update(self):
+    def update_engine(self):
         if self.running:
             self.logger.debug("Updating trading engine")
             self.web3_manager.update_position()
@@ -68,6 +68,29 @@ class TradingEngine:
             self.logger.debug(
                 "Current position: %s", self.web3_manager.position_history[-1]
             )
+
+    def update_params(self, params: dict):
+        self.logger.info("Updating trading engine")
+
+        for k, v in params.items():
+            if k == "range_percentage":
+                self.web3_manager.range_percentage = v
+            elif k == "token0_capital":
+                self.web3_manager.token0_capital = v
+            elif k == "poolFee":
+                self.web3_manager.poolFee = v
+            elif k == "poolAddress":
+                self.web3_manager.poolAddress = v
+            elif k == "walletAddress":
+                self.web3_manager.walletAddress = v
+            elif k == "walletPrivateKey":
+                self.web3_manager.walletPrivateKey = v
+            elif k == "provider":
+                self.web3_manager.provider = v
+            else:
+                self.logger.warning("Unknown parameter %s", k)
+
+        self.logger.info("Updated trading engine")
 
     def get_stats(self):
         return {
