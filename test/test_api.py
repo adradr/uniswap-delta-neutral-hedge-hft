@@ -19,7 +19,8 @@ def test_engine():
 
     trading_engine.start = MagicMock()
     trading_engine.stop = MagicMock()
-    trading_engine.update = MagicMock()
+    trading_engine.update_engine = MagicMock()
+    trading_engine.update_params = MagicMock()
     trading_engine.get_stats = MagicMock()
     trading_engine.running = False
     trading_engine.web3_manager.position_history = [{"test": "test"}]
@@ -90,10 +91,47 @@ def test_update_engine(test_app):
             "/login", json={"username": "user1", "password": "pass1"}
         ).json["access_token"]
         headers = {"Authorization": f"Bearer {access_token}"}
-        response = client.post("/update", headers=headers)
+        response = client.post("/update-engine", headers=headers)
         assert response.status_code == 404
         assert response.json["status"] == "error"
         assert response.json["message"] == "Engine is not running"
+
+
+def test_update_params_no_params(test_app):
+    client = test_app.app.test_client()
+    with client:
+        access_token = client.post(
+            "/login", json={"username": "user1", "password": "pass1"}
+        ).json["access_token"]
+        headers = {"Authorization": f"Bearer {access_token}"}
+        response = client.post("/update-params", headers=headers)
+        assert response.status_code == 400
+
+
+def test_update_params_empty_params(test_app):
+    client = test_app.app.test_client()
+    with client:
+        access_token = client.post(
+            "/login", json={"username": "user1", "password": "pass1"}
+        ).json["access_token"]
+        headers = {"Authorization": f"Bearer {access_token}"}
+        response = client.post("/update-params", headers=headers, json={})
+        assert response.status_code == 401
+        assert response.json["status"] == "error"
+        assert response.json["message"] == "Params are required"
+
+
+def test_update_params_valid_params(test_app):
+    client = test_app.app.test_client()
+    with client:
+        access_token = client.post(
+            "/login", json={"username": "user1", "password": "pass1"}
+        ).json["access_token"]
+        headers = {"Authorization": f"Bearer {access_token}"}
+        response = client.post("/update-params", headers=headers, json={"test": "test"})
+        assert response.status_code == 200
+        assert response.json["status"] == "success"
+        assert response.json["message"] == f"Updated params for TradingEngine"
 
 
 def test_engine_stats_not_running(test_app):

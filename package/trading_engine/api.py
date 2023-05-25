@@ -3,9 +3,13 @@ import logging
 import time
 
 from flask import Flask, jsonify, request
-from flask_jwt_extended import (JWTManager, create_access_token,
-                                create_refresh_token, get_jwt_identity,
-                                jwt_required)
+from flask_jwt_extended import (
+    JWTManager,
+    create_access_token,
+    create_refresh_token,
+    get_jwt_identity,
+    jwt_required,
+)
 from trading_engine import engine
 
 
@@ -151,7 +155,7 @@ class TradingEngineAPI:
                 200,
             )
 
-        @self.app.route("/update-params", methods=["GET"])
+        @self.app.route("/update-params", methods=["POST"])
         @jwt_required()
         def update_params():
             # Get params from request
