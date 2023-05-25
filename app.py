@@ -84,10 +84,10 @@ parser.add_argument(
 )
 
 parser.add_argument(
-    "--capital-percentage",
+    "--token0-capital",
     type=int,
-    help="The percentage of capital to use",
-    default=os.getenv("CAPITAL_PERCENTAGE"),
+    help="How much of the funds should be used to provide liquidity for token0 (e.g. 1000 for 1000USDC). Note: it will be ~doubled for the total position size",
+    default=os.getenv("TOKEN0_CAPITAL"),
 )
 
 parser.add_argument(
@@ -120,7 +120,7 @@ trading_engine = engine.TradingEngine(
     walletAddress=args.wallet_address,
     walletPrivateKey=args.wallet_private_key,
     range_percentage=args.range_percentage,
-    capital_percentage=args.capital_percentage,
+    token0_capital=args.token0_capital,
     provider=args.provider,
 )
 
@@ -134,7 +134,6 @@ trading_api = api.TradingEngineAPI(
     port=args.port,
     debug=args.debug,
 )
-
 
 if __name__ == "__main__":
     trading_api.run()
