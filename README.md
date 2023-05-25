@@ -127,7 +127,7 @@ Endpoint for fetching statistics about the current state of the trading engine. 
   - `message` (string): A message describing the result of the request.
   - `stats` (object): Statistics about the current state of the trading engine (only included on success).
 
-## POST /update
+## POST /update-engine
 
 Endpoint for manually triggering an update of the trading engine. Requires a valid access token.
 
@@ -142,6 +142,25 @@ Endpoint for manually triggering an update of the trading engine. Requires a val
 - Body: JSON object with the following properties:
   - `status` (string): The status of the request.
   - `message` (string): A message describing the result of the request.
+
+## POST /update-params
+
+Endpoint to update the parameters of the running engine, mainly the `Web3Manager` class instance attributes.
+
+### Request
+
+- Method: `POST`
+- Headers: `Authorization` header with the format `"Bearer {access_token}"`.
+- Parameters: JSON dictionary containing the parameters to be changes.
+  - Example: `{"provider": "https://example.com"}`
+
+### Response
+
+- Status: `200` on success, `401` if no parameters provided
+- Body: JSON object with the following properties:
+  - `status` (string): The status of the request.
+  - `message` (string): A message describing the result of the request.
+
 
 ## GET /healthcheck
 
