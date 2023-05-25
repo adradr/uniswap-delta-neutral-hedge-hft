@@ -1234,7 +1234,7 @@ class Uniswap:
         amount0Min: int = 0,
         amount1Min: int = 0,
         deadline: Union[int, None] = None,
-    ) -> TxReceipt:
+    ) -> Tuple[TxReceipt, TxReceipt, TxReceipt]:
         """
         remove all liquidity from the position associated w/ tokenId, collect fees, and burn token.
         """
@@ -1266,9 +1266,13 @@ class Uniswap:
         tx_burn = self.nonFungiblePositionManager.functions.burn(tokenId).transact(
             {"from": _addr_to_str(self.address)}
         )
-        receipt = self.w3.eth.wait_for_transaction_receipt(tx_burn)
+        receipt_remove_liquidity = self.w3.eth.wait_for_transaction_receipt(
+            tx_remove_liquidity
+        )
+        receipt_collect_fees = self.w3.eth.wait_for_transaction_receipt(tx_collect_fees)
+        receipt_burn = self.w3.eth.wait_for_transaction_receipt(tx_burn)
 
-        return receipt
+        return (receipt_remove_liquidity, receipt_collect_fees, receipt_burn)
 
     # Below two functions derived from: https://stackoverflow.com/questions/71814845/how-to-calculate-uniswap-v3-pools-total-value-locked-tvl-on-chain
     def get_token0_in_pool(
