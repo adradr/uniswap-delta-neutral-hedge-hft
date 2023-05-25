@@ -78,13 +78,13 @@ If an error occurs, the response will be:
   - `status` (string): The status of the request.
   - `message` (string): A message describing the result of the request.
 
-## POST /start
+## GET /start
 
 Endpoint for starting the trading engine. Requires a valid access token.
 
 ### Request
 
-- Method: `POST`
+- Method: `GET`
 - Headers: `Authorization` header with the format `"Bearer {access_token}"`.
 
 ### Response
@@ -94,13 +94,13 @@ Endpoint for starting the trading engine. Requires a valid access token.
   - `status` (string): The status of the request.
   - `message` (string): A message describing the result of the request.
 
-## POST /stop
+## GET /stop
 
 Endpoint for stopping the trading engine. Requires a valid access token.
 
 ### Request
 
-- Method: `POST`
+- Method: `GET`
 - Headers: `Authorization` header with the format `"Bearer {access_token}"`.
 
 ### Response
@@ -127,13 +127,13 @@ Endpoint for fetching statistics about the current state of the trading engine. 
   - `message` (string): A message describing the result of the request.
   - `stats` (object): Statistics about the current state of the trading engine (only included on success).
 
-## POST /update-engine
+## GET /update-engine
 
 Endpoint for manually triggering an update of the trading engine. Requires a valid access token.
 
 ### Request
 
-- Method: `POST`
+- Method: `GET`
 - Headers: `Authorization` header with the format `"Bearer {access_token}"`.
 
 ### Response

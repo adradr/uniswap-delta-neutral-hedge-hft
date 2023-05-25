@@ -3,9 +3,13 @@ import logging
 import time
 
 from flask import Flask, jsonify, request
-from flask_jwt_extended import (JWTManager, create_access_token,
-                                create_refresh_token, get_jwt_identity,
-                                jwt_required)
+from flask_jwt_extended import (
+    JWTManager,
+    create_access_token,
+    create_refresh_token,
+    get_jwt_identity,
+    jwt_required,
+)
 from trading_engine import engine
 
 
@@ -79,7 +83,7 @@ class TradingEngineAPI:
             access_token = create_access_token(identity=identity)
             return jsonify({"status": "success", "access_token": access_token}), 200
 
-        @self.app.route("/start", methods=["POST"])
+        @self.app.route("/start", methods=["GET"])
         @jwt_required()
         def start_engine():
             self.engine.start()
@@ -94,7 +98,7 @@ class TradingEngineAPI:
                 200,
             )
 
-        @self.app.route("/stop", methods=["POST"])
+        @self.app.route("/stop", methods=["GET"])
         @jwt_required()
         def stop_engine():
             self.engine.stop()
@@ -128,7 +132,7 @@ class TradingEngineAPI:
                 200,
             )
 
-        @self.app.route("/update-engine", methods=["POST"])
+        @self.app.route("/update-engine", methods=["GET"])
         @jwt_required()
         def update_engine():
             # Only update if engine is running
