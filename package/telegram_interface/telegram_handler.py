@@ -5,6 +5,12 @@ import json
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 
+'''
+TODO:
+add error handling for empty json in update_params
+messages not getting broadcasted to chat, just logged to cli
+'''
+
 API_URL = "http://<your-api-url>"
 DEBUG_MODE = False
 
