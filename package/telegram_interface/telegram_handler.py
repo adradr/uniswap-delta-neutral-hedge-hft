@@ -2,6 +2,9 @@ import argparse
 import logging
 import requests
 import json
+import os
+from dotenv import load_dotenv
+from pathlib import Path
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 
@@ -115,13 +118,40 @@ async def update_params(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
 
 if __name__ == "__main__":
-    # Parse command line arguments
+
+    # Set the path to your .env file
+    dotenv_path = '/path/to/your/.env'
+
+    # Check if a .env file exists in the current directory
+    if Path('.env').exists():
+        load_dotenv()
+    elif Path(dotenv_path).exists():
+        load_dotenv(dotenv_path)
+    else:
+        print("No .env file found.")
+
+    # Create the argument parser
     parser = argparse.ArgumentParser()
-    parser.add_argument("username", help="The username for the API")
-    parser.add_argument("password", help="The password for the API")
-    parser.add_argument("token", help="The Telegram bot token")
+
+    # Add arguments
+    parser.add_argument("--username", help="The username for the API")
+    parser.add_argument("--password", help="The password for the API")
+    parser.add_argument("--token", help="The Telegram bot token")
+    parser.add_argument("--api_url", help="The API URL")
+
+    # Parse the arguments
     args = parser.parse_args()
 
+    # If no arguments were provided, use the values from the .env file or exit if they are not set
+    args.username = args.username or os.getenv('USERNAME')
+    args.password = args.password or os.getenv('PASSWORD')
+    args.token = args.token or os.getenv('TELEGRAM_API_KEY')
+    args.api_url = args.api_url or os.getenv('API_URL')
+
+    if not all([args.username, args.password, args.token, args.api_url]):
+        print("Not all necessary arguments were provided. Exiting...")
+        exit(1)
+        
     # Get JWT token
     access_token = get_jwt_token(args.username, args.password)
     if not access_token:
