@@ -260,6 +260,7 @@ if __name__ == "__main__":
     args.password = args.password or os.getenv('PASSWORD')
     args.token = args.token or os.getenv('TELEGRAM_API_KEY')
     args.api_url = args.api_url or os.getenv('API_URL')
+    API_URL = args.api_url
 
     if not all([args.username, args.password, args.token, args.api_url]):
         logger.error("Not all necessary arguments were provided. Exiting...")
