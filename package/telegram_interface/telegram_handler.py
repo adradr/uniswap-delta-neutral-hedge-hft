@@ -3,15 +3,11 @@ import logging
 import requests
 import json
 import os
+import time
 from dotenv import load_dotenv
 from pathlib import Path
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
-
-'''
-TODO:
-add error handling for empty json in update_params
-'''
 
 API_URL = "http://<your-api-url>"
 DEBUG_MODE = False
@@ -42,63 +38,159 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if DEBUG_MODE == True:
         await update.message.reply_text("Engine Started - DEBUG MODE")
     else:
-        resp = requests.post(
-            f"{API_URL}/start",
-            headers={"Authorization": f'Bearer {context.user_data["access_token"]}'},  # type: ignore
-        )
-        await update.message.reply_text(resp.json()["message"])  # type: ignore
-        logger.info("Engine started")
-
+        max_attempts = 5
+        for attempt in range(max_attempts):
+            try:
+                if not API_URL:
+                    raise ValueError("No API URL provided")
+                try:
+                    token = context.user_data["access_token"]
+                except KeyError:
+                    raise ValueError("No access token provided")
+                resp = requests.get(
+                    f"{API_URL}/start",
+                    headers={"Authorization": f'Bearer {token}'},  # type: ignore
+                )
+                try:
+                    message = resp.json()["message"]
+                except KeyError:
+                    raise ValueError("No message key in the response")
+                except ValueError:
+                    raise ValueError("Response is not JSON")
+                await update.message.reply_text(message)  # type: ignore
+                logger.info("Engine started")
+                break  # If the request is successful, break out of the loop
+            except (requests.exceptions.RequestException, ValueError) as e:
+                # If a request exception or ValueError occurs, print it and retry after a delay
+                logger.error(f"Request failed with exception {e}. Retrying...")
+                time.sleep(1)  # Wait for 1 second before retrying
+        else:
+            # If we've exhausted the maximum number of attempts, send a failure message
+            await update.message.reply_text("Failed to start engine after several attempts.")
 
 async def stop(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if DEBUG_MODE == True:
         await update.message.reply_text("Engine Stopped - DEBUG MODE")
     else:
-        resp = requests.post(
-            f"{API_URL}/stop",
-            headers={"Authorization": f'Bearer {context.user_data["access_token"]}'},  # type: ignore
-        )
-        await update.message.reply_text(resp.json()["message"])  # type: ignore
-        logger.info("Engine stopped")
-
+        max_attempts = 5
+        for attempt in range(max_attempts):
+            try:
+                if not API_URL:
+                    raise ValueError("No API URL provided")
+                try:
+                    token = context.user_data["access_token"]
+                except KeyError:
+                    raise ValueError("No access token provided")
+                resp = requests.get(
+                    f"{API_URL}/stop",
+                    headers={"Authorization": f'Bearer {token}'},  # type: ignore
+                )
+                try:
+                    message = resp.json()["message"]
+                except KeyError:
+                    raise ValueError("No message key in the response")
+                except ValueError:
+                    raise ValueError("Response is not JSON")
+                await update.message.reply_text(message)  # type: ignore
+                logger.info("Engine stopped")
+                break  # If the request is successful, break out of the loop
+            except (requests.exceptions.RequestException, ValueError) as e:
+                # If a request exception or ValueError occurs, print it and retry after a delay
+                logger.error(f"Request failed with exception {e}. Retrying...")
+                time.sleep(1)  # Wait for 1 second before retrying
+        else:
+            # If we've exhausted the maximum number of attempts, send a failure message
+            await update.message.reply_text("Failed to stop engine after several attempts.")
 
 async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if DEBUG_MODE == True:
         await update.message.reply_text("Engine stats requested - DEBUG MODE")
         #TODO: Add mock engine stats, maybe import webmanager
     else:
-        resp = requests.get(
-            f"{API_URL}/stats",
-            headers={"Authorization": f'Bearer {context.user_data["access_token"]}'},  # type: ignore
-        )
-        await update.message.reply_text(resp.json()["message"])  # type: ignore
-        #TODO: Send stats, if not packed correctly
-        logger.info("Engine stats retrieved")
+        max_attempts = 3
+        for attempt in range(max_attempts):
+            try:
+                if not API_URL:
+                    raise ValueError("No API URL provided")
+                try:
+                    token = context.user_data["access_token"]
+                except KeyError:
+                    raise ValueError("No access token provided")
+                resp = requests.get(
+                    f"{API_URL}/stats",
+                    headers={"Authorization": f'Bearer {token}'},  # type: ignore
+                )
+                try:
+                    message = resp.json()["message"]
+                except KeyError:
+                    raise ValueError("No message key in the response")
+                except ValueError:
+                    raise ValueError("Response is not JSON")
+                await update.message.reply_text(message)  # type: ignore
+                logger.info("Engine stats retrieved")
+                break  # If the request is successful, break out of the loop
+            except (requests.exceptions.RequestException, ValueError) as e:
+                # If a request exception or ValueError occurs, print it and retry after a delay
+                logger.error(f"Request failed with exception {e}. Retrying...")
+                time.sleep(1)  # Wait for 1 second before retrying
+        else:
+            # If we've exhausted the maximum number of attempts, send a failure message
+            await update.message.reply_text("Failed to retrieve engine stats after several attempts.")
 
 
 async def update_engine(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if DEBUG_MODE == True:
         await update.message.reply_text("Engine Updated! - DEBUG MODE")
     else:
-        resp = requests.post(
-            f"{API_URL}/update",
-            headers={"Authorization": f'Bearer {context.user_data["access_token"]}'},  # type: ignore
-        )
-        await update.message.reply_text(resp.json()["message"])  # type: ignore
-        logger.info("Engine updated")
+        max_attempts = 5
+        for attempt in range(max_attempts):
+            try:
+                if not API_URL:
+                    raise ValueError("No API URL provided")
+                try:
+                    token = context.user_data["access_token"]
+                except KeyError:
+                    raise ValueError("No access token provided")
+                resp = requests.get(
+                    f"{API_URL}/update",
+                    headers={"Authorization": f'Bearer {token}'},  # type: ignore
+                )
+                try:
+                    message = resp.json()["message"]
+                except KeyError:
+                    raise ValueError("No message key in the response")
+                except ValueError:
+                    raise ValueError("Response is not JSON")
+                await update.message.reply_text(message)  # type: ignore
+                logger.info("Engine updated")
+                break  # If the request is successful, break out of the loop
+            except (requests.exceptions.RequestException, ValueError) as e:
+
+                # If a request exception or ValueError occurs, print it and retry after a delay
+                logger.info(f"Request failed with exception {e}. Retrying...")
+                time.sleep(1)  # Wait for 1 second before retrying
+        else:
+            # If we've exhausted the maximum number of attempts, send a failure message
+            await update.message.reply_text("Failed to update engine after several attempts.")
+            logger.error("Failed to update engine due to errors")
+
 
 async def update_params(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    #Get the parameters from the command text
+    # Get the parameters from the command text
     parts = update.message.text.split(maxsplit=1)
     if len(parts) < 2:
         await update.message.reply_text("No parameters provided!")
         return
 
     command, json_str = parts
-    
+
     # Convert the JSON string into a dict
-    params_dict = json.loads(json_str)
-    
+    try:
+        params_dict = json.loads(json_str)
+    except json.JSONDecodeError:
+        await update.message.reply_text("Invalid JSON provided!")
+        return
+
     if not params_dict:
         await update.message.reply_text("No parameters provided!")
         return
@@ -106,15 +198,36 @@ async def update_params(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     if DEBUG_MODE == True:
         await update.message.reply_text(f"Parameters Received: {params_dict} \n - DEBUG MODE")
     else:
-        # Use the parameters in the API request
-        resp = requests.post(
-            f"{API_URL}/update_params",
-            headers={"Authorization": f'Bearer {context.user_data["access_token"]}'},  # type: ignore
-            json=params_dict  #TODO CHECK IF ENGINE CAN USE JSON DATA
-        )
-        await update.message.reply_text(f"Parameters Updated: {params_dict}")
-        logger.info("Parameters updated")
-
+        max_attempts = 5
+        for attempt in range(max_attempts):
+            try:
+                if not API_URL:
+                    raise ValueError("No API URL provided")
+                try:
+                    token = context.user_data["access_token"]
+                except KeyError:
+                    raise ValueError("No access token provided")
+                resp = requests.post(
+                    f"{API_URL}/update_params",
+                    headers={"Authorization": f'Bearer {token}'},  # type: ignore
+                    json=params_dict
+                )
+                try:
+                    message = resp.json()["message"]
+                except KeyError:
+                    raise ValueError("No message key in the response")
+                except ValueError:
+                    raise ValueError("Response is not JSON")
+                await update.message.reply_text(f"Parameters Updated: {params_dict}")
+                logger.info("Parameters updated")
+                break  # If the request is successful, break out of the loop
+            except (requests.exceptions.RequestException, ValueError) as e:
+                # If a request exception or ValueError occurs, print it and retry after a delay
+                logger.error(f"Request failed with exception {e}. Retrying...")
+                time.sleep(1)  # Wait for 1 second before retrying
+        else:
+            # If we've exhausted the maximum number of attempts, send a failure message
+            await update.message.reply_text("Failed to update parameters after several attempts.")
 
 
 if __name__ == "__main__":
@@ -128,7 +241,7 @@ if __name__ == "__main__":
     elif Path(dotenv_path).exists():
         load_dotenv(dotenv_path)
     else:
-        print("No .env file found.")
+        logger.info("No .env file found.")
 
     # Create the argument parser
     parser = argparse.ArgumentParser()
@@ -149,7 +262,7 @@ if __name__ == "__main__":
     args.api_url = args.api_url or os.getenv('API_URL')
 
     if not all([args.username, args.password, args.token, args.api_url]):
-        print("Not all necessary arguments were provided. Exiting...")
+        logger.error("Not all necessary arguments were provided. Exiting...")
         exit(1)
         
     # Get JWT token
