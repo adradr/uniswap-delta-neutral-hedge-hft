@@ -12,7 +12,7 @@ setup(
         "uniswap_v3",
         "web3_manager",
         "trading_engine",
-        "slack_interface",
+        "telegram_interface",
     ],
     package_data={
         "web3_manager": [
@@ -40,8 +40,6 @@ setup(
         "ccxt",
         "web3==5.30.0",
         "uniswap-python",
-        "Pillow",
-        "kaleido",
-        "slack_bolt",
+        "python-telegram-bot",
     ],
 )
