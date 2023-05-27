@@ -218,6 +218,8 @@ class TokenManager:
         amount0 = self.calc_amount0(liq, sqrtp_upp, sqrtp_cur)
         amount1 = self.calc_amount1(liq, sqrtp_low, sqrtp_cur)
 
+        amount1 = int(amount1 / 10 ** (self.token1_decimal - self.token0_decimal))
+
         return amount1, amount0
 
     def get_ranges(

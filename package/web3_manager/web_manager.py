@@ -7,6 +7,8 @@ from eth_typing.evm import ChecksumAddress
 from uniswap_math import TokenManagement
 from uniswap_v3.uniswap import Uniswap
 from web3 import Web3
+from web3.middleware.geth_poa import geth_poa_middleware
+
 from web3.types import TxReceipt
 
 
@@ -84,18 +86,12 @@ class Web3Manager:
         ]
         """
 
-        # Initialize web3
-        self.web3 = Web3(
-            Web3.HTTPProvider(self.provider, request_kwargs={"timeout": 60})
-        )
-
         # Initialize Uniswap object
         self.uniswap = Uniswap(
-            address=self.walletAddress,
             pool_address=self.poolAddress,
+            address=self.walletAddress,
             private_key=self.walletPrivateKey,
-            web3=self.web3,
-            version=3,
+            provider=self.provider,
         )
 
         self.decimal0 = self.uniswap.token0_decimals
@@ -150,32 +146,6 @@ class Web3Manager:
         )
         return last_update_str
 
-    def get_current_price(self) -> float:
-        """Gets the current price of the pool
-
-        Returns:
-            float: The current price of the pool
-        """
-        # Get price of uni-v3 pool
-        # The current tick of the pool, i.e. according to the last tick transition that was run.
-        # This value may not always be equal to SqrtTickMath getTickAtSqrtRatio(sqrtPriceX96) if the price is on a tick boundary.
-        # https://docs.uniswap.org/contracts/v3/reference/core/interfaces/pool/IUniswapV3PoolState
-
-        currentPrice = self.pool_contract.functions.slot0().call()[0]
-        # Decode the square root price
-        sqrt_price = currentPrice / self.tokenManager.Q96
-
-        # square it to get USDC/WETH
-        price_usdc_per_weth = sqrt_price**2
-
-        # Invert it to get WETH/USDC
-        price_weth_per_usdc = 1 / price_usdc_per_weth
-
-        # Adjust for decimals
-        decimal_diff = abs(self.decimal0 - self.decimal1)
-        price_weth_per_usdc = price_weth_per_usdc * 10**decimal_diff
-        return price_weth_per_usdc
-
     def parseTxReceiptForTokenId(self, rc: TxReceipt) -> int:
         """Parses a tx receipt for the tokenId
 
@@ -223,7 +193,7 @@ class Web3Manager:
         )
 
         # Get current price
-        current_price = self.get_current_price()
+        current_price = self.uniswap.get_current_price()
 
         # Log current price and token amounts
         self.logger.info(f"Current price: {current_price}")
@@ -291,16 +261,15 @@ class Web3Manager:
             raise Exception("Unexpected error")
 
         # Swap tokens
-        hex = self.uniswap.check_approval_and_make_trade(
-            input_token=input_token,
-            output_token=output_token,
-            qty=swapAmount,
-            fee=self.poolFee,
-            recipient=self.walletAddress,
+        hex = self.uniswap.swap_token_input(
+            token_in_address=input_token,
+            token_out_address=output_token,
+            amount_in=swapAmount,
+            pool_fee=self.poolFee,
         )
 
         # Get TxReceipt from HexBytes and return
-        return self.web3.eth.getTransactionReceipt(hex)
+        return self.uniswap.w3.eth.getTransactionReceipt(hex)
 
     def update_position(self):
         """Updates the position of the wallet in the pool
@@ -311,9 +280,7 @@ class Web3Manager:
 
         """
         # Get current price and tick
-        currentPrice = self.uniswap.get_raw_price(
-            token_in=self.token0, token_out=self.token1
-        )
+        currentPrice = self.uniswap.get_current_price()
         currentTick = self.tokenManager.price_to_tick(currentPrice)
 
         # Save current tick and price
@@ -346,7 +313,7 @@ class Web3Manager:
             TxReceipt: Transaction receipt of the open position
         """
         # Get current price
-        current_price = self.get_current_price()
+        current_price = self.uniswap.get_current_price()
 
         # Calculate ticks from currentPrice
         (
@@ -375,12 +342,12 @@ class Web3Manager:
         swap_rc = self.swap_amounts()
 
         # open position at uniswap
-        rc_mint = self.uniswap.check_approval_and_mint_liquidity(
-            pool=self.pool_contract,
-            amount_0=self.amount0,
-            amount_1=self.amount1,
+        rc_mint = self.uniswap.mint_liquidity(
             tick_lower=tick_low,
             tick_upper=tick_high,
+            amount_0=self.amount0,
+            amount_1=self.amount1,
+            recipient=self.walletAddress,
         )
 
         # Get tokenId
@@ -422,11 +389,11 @@ class Web3Manager:
         """
         # Close position at uniswap
         token_id = self.position_history[-1]["tokenID"]
-        (
-            receipt_remove_liquidity,
-            receipt_collect_fees,
-            receipt_burn,
-        ) = self.uniswap.close_position(tokenId=token_id)
+
+        # Get transaction receipts
+        receipt_remove_liquidity = self.uniswap.decrease_liquidity(tokenId=token_id)
+        receipt_collect_fees = self.uniswap.collect_fees(tokenId=token_id)
+        receipt_burn = self.uniswap.burn_token(tokenId=token_id)
 
         # Save position history
         self.position_history[-1]["removeTxRc"] = receipt_remove_liquidity
