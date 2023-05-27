@@ -1,14 +1,15 @@
 import argparse
-import logging
-import requests
+import functools
 import json
+import logging
 import os
 import time
-import functools
+from typing import Union
+
+import requests
 from dotenv import load_dotenv
-from typing import Any, NamedTuple, Union
 from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
+from telegram.ext import ApplicationBuilder, CommandHandler
 
 # Initialize logging
 logging.basicConfig(level=logging.INFO)

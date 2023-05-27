@@ -2,17 +2,19 @@ import functools
 import json
 import math
 import os
-from typing import Any, Dict, Generator, List, Sequence, Tuple, Type, Union, cast
+from typing import (Any, Dict, Generator, List, Sequence, Tuple, Type, Union,
+                    cast)
 
 import lru
+from eth_typing.evm import Address
 from web3 import Web3
 from web3.contract import Contract
 from web3.exceptions import NameNotFound
 from web3.middleware.cache import construct_simple_cache_middleware
 from web3.types import Middleware
 
-from .constants import MAX_TICK, MIN_TICK, SIMPLE_CACHE_RPC_WHITELIST, _tick_spacing
-from eth_typing.evm import Address, ChecksumAddress
+from .constants import (MAX_TICK, MIN_TICK, SIMPLE_CACHE_RPC_WHITELIST,
+                        _tick_spacing)
 
 
 def _get_eth_simple_cache_middleware() -> Middleware:

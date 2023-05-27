@@ -1,31 +1,13 @@
-import time
 import logging
-from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple, Union
+import time
+from typing import Union
+
 from web3 import Web3
 from web3.types import TxReceipt
 
-from .util import (
-    _addr_to_str,
-    _get_eth_simple_cache_middleware,
-    _load_contract,
-    _load_contract_erc20,
-    _str_to_addr,
-    _validate_address,
-    chunks,
-    encode_sqrt_ratioX96,
-    is_same_address,
-    nearest_tick,
-)
-from .constants import (
-    ETH_ADDRESS,
-    MAX_TICK,
-    MAX_UINT_128,
-    MIN_TICK,
-    WETH9_ADDRESS,
-    _netid_to_name,
-    _tick_bitmap_range,
-    _tick_spacing,
-)
+from .constants import (MAX_UINT_128, _netid_to_name)
+from .util import (_get_eth_simple_cache_middleware, _load_contract,
+                   _str_to_addr)
 
 
 class Uniswap:
