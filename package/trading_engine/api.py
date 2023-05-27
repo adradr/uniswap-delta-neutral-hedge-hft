@@ -28,8 +28,8 @@ class TradingEngineAPI:
 
         @self.app.route("/login", methods=["POST"])
         def login():
-            username = request.json.get("username", None)
-            password = request.json.get("password", None)
+            username = request.json.get("username", None)  # type: ignore
+            password = request.json.get("password", None)  # type: ignore
             if not username or not password:
                 return (
                     jsonify(
