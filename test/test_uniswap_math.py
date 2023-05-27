@@ -53,7 +53,7 @@ def test_calculate_amounts():
     total_amount_token0 = 5000
     assert token_manager.calculate_amounts(
         current_price, range_low, range_high, total_amount_token0
-    ) == (5000000000000000000000, 998976618347425408)
+    ) == (5000000000, 998976618347425408)
 
 
 def test_get_ranges():
