@@ -10,7 +10,7 @@ To rebalance the position, the bot close the Uniswap position and the CEX positi
 
 ## Requirements
 
-- Python 3.9
+- Python 3.10
 - API keys for a CEX (e.g. Binance, FTX, etc.) compatible with ccxt
 - EVM compatible private key (e.g. Ethereum, Polygon, etc.)
 
