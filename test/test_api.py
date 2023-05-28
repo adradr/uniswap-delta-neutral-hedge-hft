@@ -1,6 +1,7 @@
-import pytest
 from unittest.mock import MagicMock
-from uniswap_hft.trading_engine.engine import TradingEngine
+
+import pytest
+
 from uniswap_hft.trading_engine.engine import TradingEngine
 
 
