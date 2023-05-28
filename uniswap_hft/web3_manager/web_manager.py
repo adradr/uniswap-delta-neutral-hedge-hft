@@ -4,10 +4,11 @@ import logging
 import time
 from typing import Tuple, Union
 
-from eth_typing.evm import ChecksumAddress
-from uniswap_math import TokenManagement
-from uniswap_v3.uniswap import Uniswap
 from web3.types import TxReceipt
+from eth_typing.evm import ChecksumAddress
+
+from uniswap_hft.uniswap_math import TokenManagement
+from uniswap_hft.uniswap_v3.uniswap import Uniswap
 
 
 class InsufficientFunds(Exception):
