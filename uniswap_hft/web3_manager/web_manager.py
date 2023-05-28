@@ -4,8 +4,8 @@ import logging
 import time
 from typing import Tuple, Union
 
-from web3.types import TxReceipt
 from eth_typing.evm import ChecksumAddress
+from web3.types import TxReceipt
 
 from uniswap_hft.uniswap_math import TokenManagement
 from uniswap_hft.uniswap_v3.uniswap import Uniswap
