@@ -17,8 +17,8 @@ def test_engine():
         provider="http://cloudflare-eth.com",
     )
 
-    trading_engine.start = MagicMock()
-    trading_engine.stop = MagicMock()
+    trading_engine.start = MagicMock(return_value={"status": "started"})
+    trading_engine.stop = MagicMock(return_value={"status": "stopped"})
     trading_engine.update_engine = MagicMock()
     trading_engine.update_params = MagicMock()
     trading_engine.get_stats = MagicMock()
@@ -78,10 +78,12 @@ def test_stop_engine(test_app):
             "/login", json={"username": "user1", "password": "pass1"}
         ).json["access_token"]
         headers = {"Authorization": f"Bearer {access_token}"}
+        test_app.engine.running = True
         response = client.get("/stop", headers=headers)
         assert response.status_code == 200
         assert response.json["status"] == "success"
         assert response.json["message"] == "Stopped TradingEngine"
+        test_app.engine.running = False
 
 
 def test_update_engine(test_app):

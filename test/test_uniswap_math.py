@@ -37,13 +37,13 @@ def test_sqrt_price_x_96_to_price():
 
 
 def test_tick_to_price():
-    tick = -80069
-    assert token_manager.tick_to_price(tick) == 1000.1321227639803
+    tick = 207242
+    assert token_manager.tick_to_price(tick) == 1000.1019830731274
 
 
 def test_price_to_tick():
-    price = 1000.1321227639803
-    assert token_manager.price_to_tick(price) == -80070
+    price = 1000.1019830731274
+    assert token_manager.price_to_tick(price) == 207242
 
 
 def test_calculate_amounts():
@@ -61,7 +61,7 @@ def test_get_ranges():
         909.090909090909,
         1000,
         1100.0,
-        -81021,
-        -80068,
-        -79115,
+        206290,
+        207243,
+        208196,
     )
