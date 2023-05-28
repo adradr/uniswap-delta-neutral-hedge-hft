@@ -1,6 +1,7 @@
 import logging
 
 from eth_typing.evm import ChecksumAddress
+
 from uniswap_hft.web3_manager import web_manager
 
 

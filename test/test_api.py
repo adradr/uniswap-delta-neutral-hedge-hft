@@ -2,8 +2,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from uniswap_hft.trading_engine.engine import TradingEngine
 from uniswap_hft.trading_engine.api import TradingEngineAPI
+from uniswap_hft.trading_engine.engine import TradingEngine
 
 
 @pytest.fixture(scope="module")
