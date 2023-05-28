@@ -23,10 +23,10 @@ class Web3Manager:
 
     def __init__(
         self,
-        poolAddress: ChecksumAddress,
-        poolFee: int,
-        walletAddress: ChecksumAddress,
-        walletPrivateKey: str,
+        pool_address: ChecksumAddress,
+        pool_fee: int,
+        wallet_address: ChecksumAddress,
+        wallet_private_key: str,
         range_percentage: int,
         token0_capital: int,
         provider: str,
@@ -35,10 +35,10 @@ class Web3Manager:
         """Initilizes a pool with an associated wallet and a percentage
 
         Args:
-            poolAddress (ChecksumAddress): The address of the pool where liq. should be provided
-            poolFee (int): The fee of the pool for swapping tokens (probably can use a hardcoded value)
-            walletAddress (ChecksumAddress): The address of the wallet where the funds are located at
-            walletPrivateKey (str): The private key of the wallet
+            pool_address (ChecksumAddress): The address of the pool where liq. should be provided
+            pool_fee (int): The fee of the pool for swapping tokens (probably can use a hardcoded value)
+            wallet_address (ChecksumAddress): The address of the wallet where the funds are located at
+            wallet_private_key (str): The private key of the wallet
             range_percentage (int): How wide the range should be in percentage (e.g. 1 for 1%)
             token0_capital (int): How much of the funds should be used to provide liquidity for token0 (e.g. 1000 for 1000USDC). Note: it will be ~doubled for the total position size
             provider (str): The provider of the blockchain, e.g. infura
@@ -46,10 +46,10 @@ class Web3Manager:
 
         """
         # Set variables
-        self.poolAddress = poolAddress
-        self.poolFee = poolFee
-        self.walletAddress = walletAddress
-        self.walletPrivateKey = walletPrivateKey
+        self.pool_address = pool_address
+        self.pool_fee = pool_fee
+        self.wallet_address = wallet_address
+        self.wallet_private_key = wallet_private_key
         self.range_percentage = range_percentage
         self.token0_capital = token0_capital
         self.provider = provider
@@ -86,9 +86,9 @@ class Web3Manager:
 
         # Initialize Uniswap object
         self.uniswap = Uniswap(
-            pool_address=self.poolAddress,
-            address=self.walletAddress,
-            private_key=self.walletPrivateKey,
+            pool_address=self.pool_address,
+            address=self.wallet_address,
+            private_key=self.wallet_private_key,
             provider=self.provider,
         )
 
@@ -112,9 +112,9 @@ class Web3Manager:
 
         # Log pool info line by line
         self.logger.info("Pool info:")
-        self.logger.info(f"Pool address: {self.poolAddress}")
-        self.logger.info(f"Swap pool fee: {self.poolFee}")
-        self.logger.info(f"Wallet address: {self.walletAddress}")
+        self.logger.info(f"Pool address: {self.pool_address}")
+        self.logger.info(f"Swap pool fee: {self.pool_fee}")
+        self.logger.info(f"Wallet address: {self.wallet_address}")
         self.logger.info(f"Range percentage: {self.range_percentage}")
         self.logger.info(f"Token0 capital: {self.token0_capital}")
         self.logger.info(f"Provider: {self.provider}")
@@ -147,10 +147,10 @@ class Web3Manager:
     def update_balance(self):
         """Updates the balances of the wallet for token0 and token1"""
         self.token0Balance = self.token0_contract.functions.balanceOf(
-            self.walletAddress
+            self.wallet_address
         ).call()
         self.token1Balance = self.token1_contract.functions.balanceOf(
-            self.walletAddress
+            self.wallet_address
         ).call()
 
     def get_current_time_str(self) -> str:
@@ -281,7 +281,7 @@ class Web3Manager:
             token_in_address=input_token,
             token_out_address=output_token,
             amount_in=swapAmount,
-            pool_fee=self.poolFee,
+            pool_fee=self.pool_fee,
         )
 
         # Get TxReceipt from HexBytes and return
@@ -365,7 +365,7 @@ class Web3Manager:
             tick_upper=tick_high,
             amount_0=self.amount0,
             amount_1=self.amount1,
-            recipient=self.walletAddress,
+            recipient=self.wallet_address,
         )
 
         # Get the transaction hash from the receipt objects

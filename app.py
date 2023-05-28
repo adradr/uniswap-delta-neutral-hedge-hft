@@ -115,10 +115,10 @@ logging.basicConfig(
 
 # Create trading engine
 trading_engine = engine.TradingEngine(
-    poolAddress=args.pool_address,
-    poolFee=args.pool_fee,
-    walletAddress=args.wallet_address,
-    walletPrivateKey=args.wallet_private_key,
+    pool_address=args.pool_address,
+    pool_fee=args.pool_fee,
+    wallet_address=args.wallet_address,
+    wallet_private_key=args.wallet_private_key,
     range_percentage=args.range_percentage,
     token0_capital=args.token0_capital,
     provider=args.provider,
