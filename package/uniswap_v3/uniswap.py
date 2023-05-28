@@ -1,18 +1,14 @@
-from functools import wraps
 import logging
 import time
+from functools import wraps
 from typing import Any, Callable, Union
 
 from web3 import Web3
 from web3.types import TxReceipt
 
 from .constants import MAX_UINT_128, _netid_to_name
-from .util import (
-    _get_eth_simple_cache_middleware,
-    _load_contract,
-    _str_to_addr,
-    nearest_tick,
-)
+from .util import (_get_eth_simple_cache_middleware, _load_contract,
+                   _str_to_addr, nearest_tick)
 
 
 # Retry decorator
