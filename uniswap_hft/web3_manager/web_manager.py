@@ -79,6 +79,7 @@ class Web3Manager:
                 "tx_decrease": str,
                 "tx_collect": str,
                 "tx_burn": str,
+                "is_open": bool,
                 "last_update": datetime,
             }
         ]
@@ -342,7 +343,7 @@ class Web3Manager:
             current_tick,
             tick_high,
         ) = self.tokenManager.get_ranges(
-            percentage=self.range_percentage, currentPrice=current_price
+            percentage=self.range_percentage, current_price=current_price
         )
 
         # Calculate amounts
@@ -392,6 +393,7 @@ class Web3Manager:
                 "tx_decrease": None,
                 "tx_collect": None,
                 "tx_burn": None,
+                "is_open": True,
                 "last_update": self.get_current_time_str(),
             }
         )
@@ -427,6 +429,7 @@ class Web3Manager:
         self.position_history[-1]["tx_collect"] = collect_fees_tx_hash
         self.position_history[-1]["tx_burn"] = burn_tx_hash
         self.position_history[-1]["last_update"] = self.get_current_time_str()
+        self.position_history[-1]["is_open"] = False
 
         # Save position history
         self.store_position_history()
