@@ -89,22 +89,9 @@ class TokenManager:
         Returns:
             float: The converted price value
         """
-        sqrt_price = self.tick_to_sqrt_price_x_96(tick)
-        price = self.sqrt_price_x_96_to_price(sqrt_price)
-        return price
-
-    # def price_to_tick(self, price: float) -> int:
-    #     """Converts a price to a tick, useable by Uniswap V3
-
-    #     Args:
-    #         price (float): The price to be converted
-
-    #     Returns:
-    #         int: The converted tick value
-    #     """
-    #     sqrt_price = self.price_to_sqrt_price_x_96(price)
-    #     tick = self.sqrt_price_x_96_to_tick(sqrt_price)
-    #     return tick
+        tick_basis_constant = 1.0001
+        decimal_diff = self.token0_decimal - self.token1_decimal
+        return 1 / ((tick_basis_constant**tick) * (10**decimal_diff))
 
     def price_to_tick(
         self,
