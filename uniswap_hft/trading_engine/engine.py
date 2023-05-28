@@ -48,9 +48,10 @@ class TradingEngine:
         )
 
         # Set running flag to true if position_history is_open is true
-        if self.web3_manager.position_history[-1]["is_open"]:
-            self.running = True
-            self.logger.info("Trading engine is running")
+        if len(self.web3_manager.position_history) > 0:
+            if self.web3_manager.position_history[-1]["is_open"]:
+                self.running = True
+                self.logger.info("Trading engine is running")
 
     def start(self) -> dict:
         self.logger.info("Starting trading engine")
