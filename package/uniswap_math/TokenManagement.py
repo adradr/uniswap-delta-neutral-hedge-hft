@@ -93,7 +93,23 @@ class TokenManager:
         price = self.sqrt_price_x_96_to_price(sqrt_price)
         return price
 
-    def price_to_tick(self, price: float) -> int:
+    # def price_to_tick(self, price: float) -> int:
+    #     """Converts a price to a tick, useable by Uniswap V3
+
+    #     Args:
+    #         price (float): The price to be converted
+
+    #     Returns:
+    #         int: The converted tick value
+    #     """
+    #     sqrt_price = self.price_to_sqrt_price_x_96(price)
+    #     tick = self.sqrt_price_x_96_to_tick(sqrt_price)
+    #     return tick
+
+    def price_to_tick(
+        self,
+        price: float,
+    ) -> int:
         """Converts a price to a tick, useable by Uniswap V3
 
         Args:
@@ -102,9 +118,14 @@ class TokenManager:
         Returns:
             int: The converted tick value
         """
-        sqrt_price = self.price_to_sqrt_price_x_96(price)
-        tick = self.sqrt_price_x_96_to_tick(sqrt_price)
-        return tick
+        tick_basis_constant = 1.0001
+        decimal_diff = self.token0_decimal - self.token1_decimal
+        return int(
+            round(
+                math.log(1 / (price * (10**decimal_diff)))
+                / math.log(tick_basis_constant)
+            )
+        )
 
     def liquidity0(self, amount: int, pa: int, pb: int) -> float:
         """

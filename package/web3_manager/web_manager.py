@@ -1,4 +1,5 @@
 import datetime
+import json
 import logging
 import time
 from typing import Tuple, Union
@@ -66,18 +67,18 @@ class Web3Manager:
             {
                 "tick_lower": int,
                 "tick_upper": int,
-                "current_tick": int,
-                "initial_tick": int,
-                "lower_range": float,
-                "upper_range": float,
-                "current_price": float,
-                "intial_price": float,
+                "tick_current": int,
+                "tick_initial": int,
+                "range_lower": float,
+                "range_upper": float,
+                "price_current": float,
+                "price_initial": float,
                 "tokenID": int,
-                "swapTxRc": TxReceipt,
-                "openTxRc": TxReceipt,
-                "removeTxRc": TxReceipt,
-                "collectTxRc": TxReceipt,
-                "burnTxRc": TxReceipt,
+                "tx_swap": str,
+                "tx_mint": str,
+                "tx_decrease": str,
+                "tx_collect": str,
+                "tx_burn": str,
                 "last_update": datetime,
             }
         ]
@@ -126,6 +127,23 @@ class Web3Manager:
         self.logger.info(f"Token0 balance: {self.token0Balance}")
         self.logger.info(f"Token1 balance: {self.token1Balance}")
 
+        # Try to load position history
+        try:
+            self.load_position_history()
+            self.logger.info("Position history loaded")
+        except:
+            self.logger.info("Position history not found")
+
+    def store_position_history(self):
+        """Store the position history in a json file"""
+        with open("position_history.json", "w") as f:
+            json.dump(self.position_history, f)
+
+    def load_position_history(self):
+        """Load the position history from a json file"""
+        with open("position_history.json", "r") as f:
+            self.position_history = json.load(f)
+
     def update_balance(self):
         """Updates the balances of the wallet for token0 and token1"""
         self.token0Balance = self.token0_contract.functions.balanceOf(
@@ -136,6 +154,7 @@ class Web3Manager:
         ).call()
 
     def get_current_time_str(self) -> str:
+        """Returns the current time as a string"""
         # Save position history
         last_update = time.time()
         last_update_str = datetime.datetime.fromtimestamp(last_update).strftime(
@@ -277,18 +296,23 @@ class Web3Manager:
 
         """
         # Get current price and tick
-        currentPrice = self.uniswap.get_current_price()
-        currentTick = self.tokenManager.price_to_tick(currentPrice)
+        current_price = self.uniswap.get_current_price()
+        current_tick = self.tokenManager.price_to_tick(current_price)
+
+        # Read current tick from Uniswap V3 contract
 
         # Save current tick and price
-        self.position_history[-1]["current_tick"] = currentTick
-        self.position_history[-1]["current_price"] = currentPrice
+        self.position_history[-1]["tick_current"] = current_tick
+        self.position_history[-1]["price_current"] = current_price
         self.position_history[-1]["last_update"] = self.get_current_time_str()
+
+        # Save position history
+        self.store_position_history()
 
         # Only if tick is higher or lower than range close position
         if (
-            currentTick > self.position_history[-1]["upper_tick"]
-            or currentTick < self.position_history[-1]["lower_tick"]
+            current_tick > self.position_history[-1]["tick_upper"]
+            or current_tick < self.position_history[-1]["tick_lower"]
         ):
             # Close position
             self.close_position()
@@ -302,9 +326,6 @@ class Web3Manager:
         2. Swaps the tokens in the wallet for the token with the least amount
         3. Opens a position at Uniswap V3
         4. Saves the position in the position_history list
-
-        Args:
-            capitalPercentage (int, optional): Percentage of capital to be used for the position. Defaults to 100.
 
         Returns:
             TxReceipt: Transaction receipt of the open position
@@ -347,6 +368,10 @@ class Web3Manager:
             recipient=self.walletAddress,
         )
 
+        # Get the transaction hash from the receipt objects
+        swap_tx_hash = swap_rc["transactionHash"].hex() if swap_rc else None
+        mint_tx_hash = rc_mint["transactionHash"].hex()
+
         # Get tokenId
         tokenId = self.parseTxReceiptForTokenId(rc=rc_mint)
 
@@ -355,21 +380,24 @@ class Web3Manager:
             {
                 "tick_lower": tick_low,
                 "tick_upper": tick_high,
-                "current_tick": current_tick,
-                "initial_tick": current_tick,
-                "lower_range": range_low,
-                "upper_range": range_high,
-                "current_price": current_price,
-                "intial_price": current_price,
+                "tick_current": current_tick,
+                "tick_initial": current_tick,
+                "range_lower": range_low,
+                "range_upper": range_high,
+                "price_current": current_price,
+                "price_initial": current_price,
                 "tokenID": tokenId,
-                "openTxRc": rc_mint,
-                "swapTxRc": swap_rc,
-                "removeTxRc": None,
-                "collectTxRc": None,
-                "burnTxRc": None,
+                "tx_mint": mint_tx_hash,
+                "tx_swap": swap_tx_hash,
+                "tx_decrease": None,
+                "tx_collect": None,
+                "tx_burn": None,
                 "last_update": self.get_current_time_str(),
             }
         )
+
+        # Save position history
+        self.store_position_history()
 
         return rc_mint
 
@@ -377,9 +405,6 @@ class Web3Manager:
         """Closes a position in the Uniswap V3 pool
         1. Closes the position at Uniswap V3
         2. Saves the position in the position_history list
-
-        Args:
-            tokenId (int): tokenId of the Uniswap V3 NFT
 
         Returns:
             TxReceipt: Transaction receipt of the close position
@@ -392,11 +417,19 @@ class Web3Manager:
         receipt_collect_fees = self.uniswap.collect_fees(tokenId=token_id)
         receipt_burn = self.uniswap.burn_token(tokenId=token_id)
 
+        # Get the transaction hash from the receipt objects
+        remove_liquidity_tx_hash = receipt_remove_liquidity["transactionHash"].hex()
+        collect_fees_tx_hash = receipt_collect_fees["transactionHash"].hex()
+        burn_tx_hash = receipt_burn["transactionHash"].hex()
+
         # Save position history
-        self.position_history[-1]["removeTxRc"] = receipt_remove_liquidity
-        self.position_history[-1]["collectTxRc"] = receipt_collect_fees
-        self.position_history[-1]["burnTxRc"] = receipt_burn
+        self.position_history[-1]["tx_decrease"] = remove_liquidity_tx_hash
+        self.position_history[-1]["tx_collect"] = collect_fees_tx_hash
+        self.position_history[-1]["tx_burn"] = burn_tx_hash
         self.position_history[-1]["last_update"] = self.get_current_time_str()
+
+        # Save position history
+        self.store_position_history()
 
         return (
             receipt_remove_liquidity,

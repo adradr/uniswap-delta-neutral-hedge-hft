@@ -1,13 +1,54 @@
+from functools import wraps
 import logging
 import time
-from typing import Union
+from typing import Any, Callable, Union
 
 from web3 import Web3
 from web3.types import TxReceipt
 
-from .constants import (MAX_UINT_128, _netid_to_name)
-from .util import (_get_eth_simple_cache_middleware, _load_contract,
-                   _str_to_addr)
+from .constants import MAX_UINT_128, _netid_to_name
+from .util import (
+    _get_eth_simple_cache_middleware,
+    _load_contract,
+    _str_to_addr,
+    nearest_tick,
+)
+
+
+# Retry decorator
+def retry_on_exception(
+    retries: int = 3,
+    delay: int = 5,
+    exceptions: tuple = (Exception,),
+) -> Callable:
+    """Retry decorator
+
+    Args:
+        retries (int, optional): Number of retries. Defaults to 3.
+        delay (int, optional): Delay between retries. Defaults to 5.
+        exceptions (tuple, optional): Exceptions to catch. Defaults to (Exception,).
+
+    Returns:
+        Callable: Decorated function
+    """
+
+    def decorator(func: Callable) -> Callable:
+        """Decorator"""
+
+        @wraps(func)
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
+            """Wrapper"""
+            for _ in range(retries):
+                try:
+                    return func(*args, **kwargs)
+                except exceptions as e:
+                    print(e)
+                    time.sleep(delay)
+            return func(*args, **kwargs)
+
+        return wrapper
+
+    return decorator
 
 
 class Uniswap:
@@ -116,6 +157,7 @@ class Uniswap:
         """Get a predefined deadline. 10min by default (same as the Uniswap SDK)."""
         return int(time.time()) + 10 * 60
 
+    @retry_on_exception()
     def get_current_price(self) -> float:
         """Gets the current price of the pool
 
@@ -142,6 +184,7 @@ class Uniswap:
         price_weth_per_usdc = price_weth_per_usdc * 10**decimal_diff
         return price_weth_per_usdc
 
+    @retry_on_exception()
     def mint_liquidity(
         self,
         tick_lower: int,
@@ -163,6 +206,10 @@ class Uniswap:
         if deadline is None:
             deadline = self._deadline()
 
+        # Adjust for tick spacing
+        tick_lower = nearest_tick(tick_lower, fee=fee)
+        tick_upper = nearest_tick(tick_upper, fee=fee)
+
         # Create a dict of arguments
         params = {
             "token0": self.token0,
@@ -182,6 +229,9 @@ class Uniswap:
         gas_estimate = self.nonFungiblePositionManager.functions.mint(
             params
         ).estimateGas({"from": self.address})
+
+        # Increase gas estimate by 10%
+        gas_estimate = int(gas_estimate * 1.1)
 
         # Create the transaction that NonFungiblePositionManager will sign
         nonce = self.w3.eth.getTransactionCount(self.address)
@@ -207,6 +257,7 @@ class Uniswap:
         receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash)
         return receipt
 
+    @retry_on_exception()
     def decrease_liquidity(self, tokenId: int, deadline: int = 2**64) -> TxReceipt:
         """
         Burns liquidity from the pool by using a tokenId
@@ -231,6 +282,9 @@ class Uniswap:
         gas_estimate = self.nonFungiblePositionManager.functions.decreaseLiquidity(
             params
         ).estimateGas()
+
+        # Increase the gas estimate by 10% to avoid underestimation
+        gas_estimate = int(gas_estimate * 1.1)
 
         # Create the transaction that NonFungiblePositionManager will sign
         nonce = self.w3.eth.getTransactionCount(self.address)
@@ -257,6 +311,7 @@ class Uniswap:
         receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash)
         return receipt
 
+    @retry_on_exception()
     def collect_fees(self, tokenId: int):
         """
         Collects fees for the specified tokenId
@@ -274,6 +329,9 @@ class Uniswap:
         gas_estimate = self.nonFungiblePositionManager.functions.collect(
             params
         ).estimateGas()
+
+        # Increase the gas estimate by 10% to avoid underestimation
+        gas_estimate = int(gas_estimate * 1.1)
 
         # Create the transaction that NonFungiblePositionManager will sign
         nonce = self.w3.eth.getTransactionCount(self.address)
@@ -300,6 +358,7 @@ class Uniswap:
         receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash)
         return receipt
 
+    @retry_on_exception()
     def burn_token(self, tokenId: int):
         """
         Burns liquidity from the pool by using a tokenId
@@ -308,6 +367,9 @@ class Uniswap:
         gas_estimate = self.nonFungiblePositionManager.functions.burn(
             tokenId
         ).estimateGas()
+
+        # Increase the gas estimate by 10% to avoid underestimation
+        gas_estimate = int(gas_estimate * 1.1)
 
         # Create the transaction that NonFungiblePositionManager will sign
         nonce = self.w3.eth.getTransactionCount(self.address)
@@ -334,6 +396,7 @@ class Uniswap:
         receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash)
         return receipt
 
+    @retry_on_exception()
     def swap_token_input(
         self,
         token_in_address: str,

@@ -3,9 +3,13 @@ import logging
 import time
 
 from flask import Flask, jsonify, request
-from flask_jwt_extended import (JWTManager, create_access_token,
-                                create_refresh_token, get_jwt_identity,
-                                jwt_required)
+from flask_jwt_extended import (
+    JWTManager,
+    create_access_token,
+    create_refresh_token,
+    get_jwt_identity,
+    jwt_required,
+)
 from trading_engine import engine
 
 
@@ -81,13 +85,29 @@ class TradingEngineAPI:
         @self.app.route("/start", methods=["GET"])
         @jwt_required()
         def start_engine():
-            self.engine.start()
+            # Return error if engine is already running
+            if self.engine.running:
+                return (
+                    jsonify(
+                        {
+                            "status": "error",
+                            "message": f"{type(self.engine).__name__} is already running",
+                            "engine": "running" if self.engine.running else "stopped",
+                        }
+                    ),
+                    404,
+                )
+
+            # Start the engine
+            position_history = self.engine.start()
             logging.info(f"Started {type(self.engine).__name__}")
             return (
                 jsonify(
                     {
                         "status": "success",
                         "message": f"Started {type(self.engine).__name__}",
+                        "engine": "running" if self.engine.running else "stopped",
+                        "stats": position_history,
                     }
                 ),
                 200,
@@ -96,13 +116,29 @@ class TradingEngineAPI:
         @self.app.route("/stop", methods=["GET"])
         @jwt_required()
         def stop_engine():
-            self.engine.stop()
+            # Return error if engine is not running
+            if not self.engine.running:
+                return (
+                    jsonify(
+                        {
+                            "status": "error",
+                            "message": f"{type(self.engine).__name__} is not running",
+                            "engine": "running" if self.engine.running else "stopped",
+                        }
+                    ),
+                    404,
+                )
+
+            # Stop the engine
+            position_history = self.engine.stop()
             logging.info(f"Stopped {type(self.engine).__name__}")
             return (
                 jsonify(
                     {
                         "status": "success",
                         "message": f"Stopped {type(self.engine).__name__}",
+                        "engine": "running" if self.engine.running else "stopped",
+                        "stats": position_history,
                     }
                 ),
                 200,
@@ -113,7 +149,13 @@ class TradingEngineAPI:
         def engine_stats():
             if not self.engine.running:
                 return (
-                    jsonify({"status": "error", "message": "Engine is not running"}),
+                    jsonify(
+                        {
+                            "status": "error",
+                            "message": "Engine is not running",
+                            "engine": "running" if self.engine.running else "stopped",
+                        }
+                    ),
                     404,
                 )
             return (
@@ -121,6 +163,7 @@ class TradingEngineAPI:
                     {
                         "status": "success",
                         "message": f"Stats for {type(self.engine).__name__}",
+                        "engine": "running" if self.engine.running else "stopped",
                         "stats": self.engine.web3_manager.position_history[-1],
                     }
                 ),
@@ -133,18 +176,26 @@ class TradingEngineAPI:
             # Only update if engine is running
             if not self.engine.running:
                 return (
-                    jsonify({"status": "error", "message": "Engine is not running"}),
+                    jsonify(
+                        {
+                            "status": "error",
+                            "message": "Engine is not running",
+                            "engine": "running" if self.engine.running else "stopped",
+                        }
+                    ),
                     404,
                 )
 
             # Update engine
-            self.engine.update_engine()
+            position_history = self.engine.update_engine()
             logging.info(f"Updated {type(self.engine).__name__}")
             return (
                 jsonify(
                     {
                         "status": "success",
                         "message": f"Updated {type(self.engine).__name__}",
+                        "engine": "running" if self.engine.running else "stopped",
+                        "stats": position_history,
                     }
                 ),
                 200,
@@ -161,6 +212,7 @@ class TradingEngineAPI:
                         {
                             "status": "error",
                             "message": "Params are required",
+                            "engine": "running" if self.engine.running else "stopped",
                         }
                     ),
                     401,
@@ -173,6 +225,7 @@ class TradingEngineAPI:
                     {
                         "status": "success",
                         "message": f"Updated params for {type(self.engine).__name__}",
+                        "engine": "running" if self.engine.running else "stopped",
                     }
                 ),
                 200,
@@ -181,7 +234,16 @@ class TradingEngineAPI:
         @self.app.route("/healthcheck", methods=["GET"])
         def healthcheck():
             time.sleep(1)
-            return jsonify({"status": "success", "message": "Healthy"}), 200
+            return (
+                jsonify(
+                    {
+                        "status": "success",
+                        "message": "Healthy",
+                        "engine": "running" if self.engine.running else "stopped",
+                    }
+                ),
+                200,
+            )
 
     def run(self):
         self.app.run(debug=self.debug, port=self.port, host=self.host)

@@ -46,21 +46,23 @@ class TradingEngine:
             provider=provider,
         )
 
-    def start(self):
+    def start(self) -> dict:
         self.logger.info("Starting trading engine")
         self.running = True
         self.web3_manager.open_position()
         self.logger.info("Started trading engine")
         self.logger.info("Current position: %s", self.web3_manager.position_history[-1])
+        return self.web3_manager.position_history[-1]
 
-    def stop(self):
+    def stop(self) -> dict:
         self.logger.info("Stopping trading engine")
         self.running = False
         self.web3_manager.close_position()
         self.logger.info("Stopped trading engine")
         self.logger.info("Closed position: %s", self.web3_manager.position_history[-1])
+        return self.web3_manager.position_history[-1]
 
-    def update_engine(self):
+    def update_engine(self) -> dict:
         if self.running:
             self.logger.debug("Updating trading engine")
             self.web3_manager.update_position()
@@ -68,6 +70,8 @@ class TradingEngine:
             self.logger.debug(
                 "Current position: %s", self.web3_manager.position_history[-1]
             )
+            return self.web3_manager.position_history[-1]
+        return {}
 
     def update_params(self, params: dict):
         self.logger.info("Updating trading engine")
