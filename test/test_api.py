@@ -1,24 +1,25 @@
 from unittest.mock import MagicMock
 
 import pytest
-from trading_engine.api import TradingEngineAPI
-from trading_engine.engine import TradingEngine
+
+from uniswap_hft.trading_engine.api import TradingEngineAPI
+from uniswap_hft.trading_engine.engine import TradingEngine
 
 
 @pytest.fixture(scope="module")
 def test_engine():
     trading_engine = TradingEngine(
-        poolAddress="0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640",  # type: ignore
-        poolFee=500,
-        walletAddress="0x1234567890123456789012345678901234567890",  # type: ignore
-        walletPrivateKey="0x1234567890123456789012345678901234567890123456789012345678901234",
+        pool_address="0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640",  # type: ignore
+        pool_fee=500,
+        wallet_address="0x1234567890123456789012345678901234567890",  # type: ignore
+        wallet_private_key="0x1234567890123456789012345678901234567890123456789012345678901234",
         range_percentage=0,
         token0_capital=0,
         provider="http://cloudflare-eth.com",
     )
 
-    trading_engine.start = MagicMock()
-    trading_engine.stop = MagicMock()
+    trading_engine.start = MagicMock(return_value={"status": "started"})
+    trading_engine.stop = MagicMock(return_value={"status": "stopped"})
     trading_engine.update_engine = MagicMock()
     trading_engine.update_params = MagicMock()
     trading_engine.get_stats = MagicMock()
@@ -78,10 +79,12 @@ def test_stop_engine(test_app):
             "/login", json={"username": "user1", "password": "pass1"}
         ).json["access_token"]
         headers = {"Authorization": f"Bearer {access_token}"}
+        test_app.engine.running = True
         response = client.get("/stop", headers=headers)
         assert response.status_code == 200
         assert response.json["status"] == "success"
         assert response.json["message"] == "Stopped TradingEngine"
+        test_app.engine.running = False
 
 
 def test_update_engine(test_app):
