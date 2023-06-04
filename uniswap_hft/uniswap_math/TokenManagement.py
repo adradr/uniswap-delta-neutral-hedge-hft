@@ -89,11 +89,14 @@ class TokenManager:
         Returns:
             float: The converted price value
         """
-        sqrt_price = self.tick_to_sqrt_price_x_96(tick)
-        price = self.sqrt_price_x_96_to_price(sqrt_price)
-        return price
+        tick_basis_constant = 1.0001
+        decimal_diff = self.token0_decimal - self.token1_decimal
+        return 1 / ((tick_basis_constant**tick) * (10**decimal_diff))
 
-    def price_to_tick(self, price: float) -> int:
+    def price_to_tick(
+        self,
+        price: float,
+    ) -> int:
         """Converts a price to a tick, useable by Uniswap V3
 
         Args:
@@ -102,9 +105,14 @@ class TokenManager:
         Returns:
             int: The converted tick value
         """
-        sqrt_price = self.price_to_sqrt_price_x_96(price)
-        tick = self.sqrt_price_x_96_to_tick(sqrt_price)
-        return tick
+        tick_basis_constant = 1.0001
+        decimal_diff = self.token0_decimal - self.token1_decimal
+        return int(
+            round(
+                math.log(1 / (price * (10**decimal_diff)))
+                / math.log(tick_basis_constant)
+            )
+        )
 
     def liquidity0(self, amount: int, pa: int, pb: int) -> float:
         """
@@ -218,10 +226,12 @@ class TokenManager:
         amount0 = self.calc_amount0(liq, sqrtp_upp, sqrtp_cur)
         amount1 = self.calc_amount1(liq, sqrtp_low, sqrtp_cur)
 
+        amount1 = int(amount1 / 10 ** (self.token1_decimal - self.token0_decimal))
+
         return amount1, amount0
 
     def get_ranges(
-        self, percentage: int, currentPrice: float
+        self, percentage: int, current_price: float
     ) -> Tuple[float, float, float, int, int, int]:
         """
         Gives the lower and upper ranges of a soon to be created pool, given a percentage,
@@ -229,15 +239,23 @@ class TokenManager:
 
         Args:
             percentage (int): How wide should the bin be to provide liqudity in, 0-100
-            currentPrice (float): The current price of the token
+            current_price (float): The current price of the token
 
         Returns:
-            Tuple[float, float, float, int, int, int]: a tuple, with lowerRange(price), currentPrice(price), upperRange(price),
+            Tuple[float, float, float, int, int, int]: a tuple, containing the lower range,
+            current price, upper range, lower tick, current tick, upper tick
         """
-        upperRange = currentPrice * (1 + (percentage / 100))
-        lowerRange = currentPrice / (1 + (percentage / 100))
-        upperTick = self.price_to_tick(lowerRange)
-        lowerTick = self.price_to_tick(upperRange)
-        currentTick = self.price_to_tick(currentPrice)
+        upper_range = current_price * (1 + (percentage / 100))
+        lower_range = current_price / (1 + (percentage / 100))
+        upper_tick = self.price_to_tick(lower_range)
+        lower_tick = self.price_to_tick(upper_range)
+        current_tick = self.price_to_tick(current_price)
 
-        return (lowerRange, currentPrice, upperRange, lowerTick, currentTick, upperTick)
+        return (
+            lower_range,
+            current_price,
+            upper_range,
+            lower_tick,
+            current_tick,
+            upper_tick,
+        )

@@ -1,6 +1,6 @@
 import math
 
-from uniswap_math import TokenManagement
+from uniswap_hft.uniswap_math import TokenManagement
 
 # Initialize the TokenManager with token0 decimals 6 and token1 decimals 18
 token_manager = TokenManagement.TokenManager(6, 18)
@@ -37,13 +37,13 @@ def test_sqrt_price_x_96_to_price():
 
 
 def test_tick_to_price():
-    tick = -80069
-    assert token_manager.tick_to_price(tick) == 1000.1321227639803
+    tick = 207242
+    assert token_manager.tick_to_price(tick) == 1000.1019830731274
 
 
 def test_price_to_tick():
-    price = 1000.1321227639803
-    assert token_manager.price_to_tick(price) == -80070
+    price = 1000.1019830731274
+    assert token_manager.price_to_tick(price) == 207242
 
 
 def test_calculate_amounts():
@@ -53,7 +53,7 @@ def test_calculate_amounts():
     total_amount_token0 = 5000
     assert token_manager.calculate_amounts(
         current_price, range_low, range_high, total_amount_token0
-    ) == (5000000000000000000000, 998976618347425408)
+    ) == (5000000000, 998976618347425408)
 
 
 def test_get_ranges():
@@ -61,7 +61,7 @@ def test_get_ranges():
         909.090909090909,
         1000,
         1100.0,
-        -81021,
-        -80068,
-        -79115,
+        206290,
+        207243,
+        208196,
     )

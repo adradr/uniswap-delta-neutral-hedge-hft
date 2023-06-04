@@ -6,6 +6,7 @@ from typing import (Any, Dict, Generator, List, Sequence, Tuple, Type, Union,
                     cast)
 
 import lru
+from eth_typing.evm import Address
 from web3 import Web3
 from web3.contract import Contract
 from web3.exceptions import NameNotFound
@@ -14,7 +15,6 @@ from web3.types import Middleware
 
 from .constants import (MAX_TICK, MIN_TICK, SIMPLE_CACHE_RPC_WHITELIST,
                         _tick_spacing)
-from .types import Address, AddressLike
 
 
 def _get_eth_simple_cache_middleware() -> Middleware:
@@ -24,18 +24,18 @@ def _get_eth_simple_cache_middleware() -> Middleware:
     )
 
 
-def _str_to_addr(s: Union[AddressLike, str]) -> Address:
+def _str_to_addr(s: Union[Address, str]) -> Address:
     """Idempotent"""
     if isinstance(s, str):
         if s.startswith("0x"):
             return Address(bytes.fromhex(s[2:]))
         else:
-            raise NameNotFound(f"Couldn't convert string '{s}' to AddressLike")
+            raise NameNotFound(f"Couldn't convert string '{s}' to Address")
     else:
         return s
 
 
-def _addr_to_str(a: AddressLike) -> str:
+def _addr_to_str(a: Address) -> str:
     if isinstance(a, bytes):
         # Address or ChecksumAddress
         addr: str = Web3.toChecksumAddress("0x" + bytes(a).hex())
@@ -47,11 +47,11 @@ def _addr_to_str(a: AddressLike) -> str:
     raise NameNotFound(a)
 
 
-def is_same_address(a1: Union[AddressLike, str], a2: Union[AddressLike, str]) -> bool:
+def is_same_address(a1: Union[Address, str], a2: Union[Address, str]) -> bool:
     return _str_to_addr(a1) == _str_to_addr(a2)
 
 
-def _validate_address(a: AddressLike) -> None:
+def _validate_address(a: Address) -> None:
     assert _addr_to_str(a)
 
 
@@ -63,16 +63,16 @@ def _load_abi(name: str) -> str:
 
 
 @functools.lru_cache()
-def _load_contract(w3: Web3, abi_name: str, address: AddressLike) -> Contract:
+def _load_contract(w3: Web3, abi_name: str, address: str) -> Contract:
     address = Web3.toChecksumAddress(address)
     return w3.eth.contract(address=address, abi=_load_abi(abi_name))  # type: ignore
 
 
-def _load_contract_erc20(w3: Web3, address: AddressLike) -> Contract:
+def _load_contract_erc20(w3: Web3, address: Address) -> Contract:
     return _load_contract(w3, "erc20", address)
 
 
-def _encode_path(token_in: AddressLike, route: List[Tuple[int, AddressLike]]) -> bytes:
+def _encode_path(token_in: Address, route: List[Tuple[int, Address]]) -> bytes:
     """
     Needed for multi-hop swaps in V3.
 
