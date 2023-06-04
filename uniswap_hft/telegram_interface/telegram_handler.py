@@ -3,9 +3,10 @@ import functools
 import json
 import logging
 import os
+import pprint
 import time
 from typing import Union
-
+import aiohttp
 import requests
 from dotenv import load_dotenv
 from telegram import Update
@@ -38,25 +39,34 @@ def retry(attempts=5, delay=1):
 
 
 class TelegramAPIHandler:
-    def __init__(self, api_url: str, debug_mode: bool) -> None:
-        self.api_url = api_url
+    def __init__(
+        self,
+        api_host: str,
+        api_port: int,
+        api_username: str,
+        api_password: str,
+        debug_mode: bool,
+    ) -> None:
+        self.api_url = f"http://{api_host}:{api_port}"
+        self.api_username = api_username
+        self.api_password = api_password
         self.debug_mode = debug_mode
 
     @retry()
-    def get_jwt_token(self, username: str, password: str) -> Union[str, None]:
-        if username or password == "0":
-            self.debug_mode = True
-            return
-        resp = requests.post(
-            f"{self.api_url}/login", json={"username": username, "password": password}
-        )
-        if resp.status_code == 200:
-            return resp.json()["access_token"]
-        else:
-            logger.error("Failed to get JWT token")
-            logger.info("Entering Debug Mode")
-            self.debug_mode = True
-            return None
+    async def get_jwt_token(self) -> Union[str, None]:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                f"{self.api_url}/login",
+                json={"username": self.api_username, "password": self.api_password},
+            ) as resp:
+                if resp.status == 200:
+                    data = await resp.json()
+                    return data["access_token"]
+                else:
+                    logger.error("Failed to get JWT token")
+                    logger.info("Entering Debug Mode")
+                    self.debug_mode = True
+                    return None
 
     @retry()
     async def _execute_api_command(
@@ -73,14 +83,25 @@ class TelegramAPIHandler:
             )
             return
 
-        headers = {"Authorization": f'Bearer {context.user_data["access_token"]}'}
-        resp = getattr(requests, method.lower())(
-            f"{self.api_url}/{command}",
-            headers=headers,
-            json=json,
-        )
-        message = resp.json()["message"]
-        await context.bot.send_message(context.from_user.id, message)
+        access_token = await self.get_jwt_token()
+        headers = {"Authorization": f"Bearer {access_token}"}
+        async with aiohttp.ClientSession() as session:
+            request_func = getattr(session, method.lower())
+            async with request_func(
+                f"{self.api_url}/{command}",
+                headers=headers,
+                json=json,
+            ) as resp:
+                data = await resp.json()
+                data = pprint.pformat(data)
+                # Format data for Telegram
+                data = data.replace("'", "")
+                data = data.replace("{", "")
+                data = data.replace("}", "")
+                # data = data.replace(",", "\n")
+                data = data.replace(":", " - ")
+
+        await context.bot.send_message(context._chat_id, data)
         logger.info(f"{command} executed")
 
     async def start(self, update: Update, context) -> None:
@@ -93,7 +114,7 @@ class TelegramAPIHandler:
         await self._execute_api_command("stats", update, context)
 
     async def update_engine(self, update: Update, context) -> None:
-        await self._execute_api_command("update", update, context)
+        await self._execute_api_command("update-engine", update, context)
 
     async def update_params(self, update: Update, context) -> None:
         parts = update.message.text.split(maxsplit=1)  # type: ignore
@@ -118,7 +139,7 @@ class TelegramAPIHandler:
         )
 
 
-if __name__ == "__main__":
+def main():
     # Load environment variables and parse arguments
     load_dotenv()
     parser = argparse.ArgumentParser()
@@ -136,7 +157,11 @@ if __name__ == "__main__":
         "--token", default=os.getenv("TELEGRAM_API_KEY"), help="The Telegram bot token"
     )
     parser.add_argument(
-        "--api_url", default=os.getenv("TELEGRAM_ENGINEAPI_URL"), help="The API URL"
+        "--api_host", default=os.getenv("TELEGRAM_ENGINEAPI_HOST"), help="The API HOST"
+    )
+
+    parser.add_argument(
+        "--api_port", default=os.getenv("TELEGRAM_ENGINEAPI_PORT"), help="The API PORT"
     )
 
     # Add debug flag
@@ -148,16 +173,18 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    if not all([args.username, args.password, args.api_url]):
+    if not all([args.username, args.password, args.api_host, args.api_port]):
         logger.error("Not all necessary arguments were provided. Exiting...")
         exit(1)
 
-    engine_app = TelegramAPIHandler(args.api_url, False)
+    engine_app = TelegramAPIHandler(
+        args.api_host, args.api_port, args.username, args.password, args.debug_mode
+    )
     if args.debug_mode:
         engine_app.debug_mode = True
         logger.info("Bot Starting in Debug Mode")
     else:
-        access_token = engine_app.get_jwt_token(args.username, args.password)
+        logger.info("Bot Starting in Production Mode")
 
     print(args.token)
 
@@ -169,3 +196,7 @@ if __name__ == "__main__":
     app.add_handler(CommandHandler("update_params", engine_app.update_params))
 
     app.run_polling()
+
+
+if __name__ == "__main__":
+    main()
