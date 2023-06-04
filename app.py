@@ -3,7 +3,8 @@ import logging
 import os
 
 from dotenv import load_dotenv
-from trading_engine import api, engine
+
+from uniswap_hft.trading_engine import api, engine
 
 # Create parser
 load_dotenv()

@@ -10,7 +10,7 @@ To rebalance the position, the bot close the Uniswap position and the CEX positi
 
 ## Requirements
 
-- Python 3.9
+- Python 3.10
 - API keys for a CEX (e.g. Binance, FTX, etc.) compatible with ccxt
 - EVM compatible private key (e.g. Ethereum, Polygon, etc.)
 
@@ -23,63 +23,86 @@ This module contains the math functions used to calculate the Uniswap token amou
 ## uniswap_hft.trading_engine
 
 This module contains the TradingEngine class which is the main class of the bot. It contains the logic to open and close positions, rebalance positions, and calculate the position size.
+The `trading_engine` is only acting as a wrapper around the `web_manager` to handle operations and prepare a simplified integration for the API.
 
-## uniswap_hft.telegram_interface
 
-The Telegram Interface module contains the `TelegramAPIHandler` class which is used to interact with the trading bot via Telegram commands. It sends and receives messages to interact with the bot.
+## uniswap_hft.web_manager
 
-### Class: `TelegramAPIHandler`
+The Web Manager module houses the `Web3Manager` class that is utilized to manage the web3 connection and the Uniswap contract. It is responsible for initializing the connection, opening positions, and maintaining the positions by periodically updating them.
 
-#### Initialization
+### Class: `Web3Manager`
 
-The class is initialized with the following parameters:
+The `Web3Manager` class initializes the web3 connection and the Uniswap contract. It also has methods to open and update positions in the Uniswap contract.
 
-- `api_url` (str): The URL of the trading bot's API.
-- `debug_mode` (bool): A boolean value that determines whether the bot is in debug mode.
+```python
+class Web3Manager:
+    def __init__(
+        self,
+        pool_address: ChecksumAddress,
+        pool_fee: int,
+        wallet_address: ChecksumAddress,
+        wallet_private_key: str,
+        range_percentage: int,
+        token0_capital: int,
+        provider: str,
+        debug: bool = False,
+    ):
+        ...
+```
 
-The `debug_mode` if set to True bypasses actual API calls and returns debug messages.
+#### Initializer
 
-### Methods
+The class is initialized with the details of the provider, Uniswap contract, and wallet.
 
-#### `get_jwt_token(self, username: str, password: str) -> Union[str, None]`
+**Args:**
+* `pool_address` (ChecksumAddress): The address of the pool where liquidity should be provided.
+* `pool_fee` (int): The fee of the pool for swapping tokens (you can probably use a hardcoded value).
+* `wallet_address` (ChecksumAddress): The address of the wallet where the funds are located.
+* `wallet_private_key` (str): The private key of the wallet.
+* `range_percentage` (int): How wide the range should be in percentage (e.g., 1 for 1%).
+* `token0_capital` (int): How much of the funds should be used to provide liquidity for token0 (e.g., 1000 for 1000 USDC). Note: it will be roughly doubled for the total position size.
+* `provider` (str): The provider of the blockchain, e.g., Infura.
+* `debug` (bool, optional): Whether to enable debug logging. Defaults to False.
 
-This method is used to authenticate the user and get a JWT token. This method returns the JWT token if the authentication is successful, and None if it fails.
+#### Methods
 
-#### `_execute_api_command(self, command: str, update: Update, context, method: str = "GET", json: dict = {}) -> None`
+The `Web3Manager` class implements several methods to interact with the Uniswap contract.
 
-This method is used to execute API commands. It requires the command to be executed, a Telegram update object, and the context. Optional parameters include the HTTP method (default is GET) and a JSON dictionary to be included in the request.
+**`store_position_history(self)`**
 
-#### `start(self, update: Update, context) -> None`
+Stores the position history in a JSON file.
 
-This method starts the trading bot.
+**`load_position_history(self)`**
 
-#### `stop(self, update: Update, context) -> None`
+Loads the position history from a JSON file.
 
-This method stops the trading bot.
+**`update_balance(self)`**
 
-#### `stats(self, update: Update, context) -> None`
+Updates the balances of the wallet for token0 and token1.
 
-This method returns the current statistics of the trading bot.
+**`get_current_time_str(self) -> str`**
 
-#### `update_engine(self, update: Update, context) -> None`
+Returns the current time as a string.
 
-This method manually triggers an update of the trading bot.
+**`parseTxReceiptForTokenId(self, rc: TxReceipt) -> int`**
 
-#### `update_params(self, update: Update, context) -> None`
+Parses a transaction receipt for the tokenId.
 
-This method is used to update the parameters of the running engine.
+**`swap_amounts(self) -> Union[TxReceipt, None]`**
 
-### Command Handlers
+Swaps the tokens in the wallet for the token with the least amount.
 
-Command handlers are added to listen for certain commands from the Telegram chat:
+**`update_position(self)`**
 
-- `start`: Starts the trading bot.
-- `stop`: Stops the trading bot.
-- `stats`: Fetches the current statistics of the trading bot.
-- `update_engine`: Manually triggers an update of the trading bot.
-- `update_params`: Updates the parameters of the running engine.
+Updates the position of the wallet in the pool.
 
-Please note that all the commands when given in the chat need to be preceded by `/`. For example: `/start` to start the trading bot.
+**`open_position(self) -> TxReceipt`**
+
+Opens a position in Uniswap V3.
+
+**`close_position(self) -> Tuple[TxReceipt, TxReceipt, TxReceipt]`**
+
+Closes a position in the Uniswap V3 pool.
 
 ## uniswap_hft.api
 
@@ -237,3 +260,61 @@ Endpoint for checking the health status of the API.
   - `status` (string): The status of the request.
   - `message` (string): A message describing the result of the request.
   - `engine` (string): Current state of the engine.
+
+
+  ## uniswap_hft.telegram_interface
+
+The Telegram Interface module contains the `TelegramAPIHandler` class which is used to interact with the trading bot via Telegram commands. It sends and receives messages to interact with the bot.
+
+### Class: `TelegramAPIHandler`
+
+#### Initialization
+
+The class is initialized with the following parameters:
+
+- `api_url` (str): The URL of the trading bot's API.
+- `debug_mode` (bool): A boolean value that determines whether the bot is in debug mode.
+
+The `debug_mode` if set to True bypasses actual API calls and returns debug messages.
+
+### Methods
+
+#### `get_jwt_token(self, username: str, password: str) -> Union[str, None]`
+
+This method is used to authenticate the user and get a JWT token. This method returns the JWT token if the authentication is successful, and None if it fails.
+
+#### `_execute_api_command(self, command: str, update: Update, context, method: str = "GET", json: dict = {}) -> None`
+
+This method is used to execute API commands. It requires the command to be executed, a Telegram update object, and the context. Optional parameters include the HTTP method (default is GET) and a JSON dictionary to be included in the request.
+
+#### `start(self, update: Update, context) -> None`
+
+This method starts the trading bot.
+
+#### `stop(self, update: Update, context) -> None`
+
+This method stops the trading bot.
+
+#### `stats(self, update: Update, context) -> None`
+
+This method returns the current statistics of the trading bot.
+
+#### `update_engine(self, update: Update, context) -> None`
+
+This method manually triggers an update of the trading bot.
+
+#### `update_params(self, update: Update, context) -> None`
+
+This method is used to update the parameters of the running engine.
+
+### Command Handlers
+
+Command handlers are added to listen for certain commands from the Telegram chat:
+
+- `start`: Starts the trading bot.
+- `stop`: Stops the trading bot.
+- `stats`: Fetches the current statistics of the trading bot.
+- `update_engine`: Manually triggers an update of the trading bot.
+- `update_params`: Updates the parameters of the running engine.
+
+Please note that all the commands when given in the chat need to be preceded by `/`. For example: `/start` to start the trading bot.

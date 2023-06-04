@@ -1,24 +1,24 @@
 from setuptools import setup
 
 setup(
-    name="uniswap-hft",
+    name="uniswap_hft",
     version="0.1",
     description="Uniswap trading library, which allows to create a delta neutral hedge for a given token pair.",
     url="https://github.com/adradr/uniswap-delta-neutral-hedge-hft",
     author="Adrian Lenard, Patrik Belteky",
     author_email="adrian.lenard@me.com, patrik.belteky@gmail.com",
     packages=[
-        "uniswap_math",
-        "uniswap_v3",
-        "web3_manager",
-        "trading_engine",
-        "telegram_interface",
+        "uniswap_hft.uniswap_math",
+        "uniswap_hft.uniswap_v3",
+        "uniswap_hft.web3_manager",
+        "uniswap_hft.trading_engine",
+        "uniswap_hft.telegram_interface",
     ],
     package_data={
-        "web3_manager": [
+        "uniswap_hft.web3_manager": [
             "assets/*",
         ],
-        "uniswap_v3": [
+        "uniswap_hft.uniswap_v3": [
             "assets/*",
             "assets/uniswap-v1/*",
             "assets/uniswap-v2/*",

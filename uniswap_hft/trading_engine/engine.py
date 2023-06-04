@@ -1,7 +1,8 @@
 import logging
 
 from eth_typing.evm import ChecksumAddress
-from web3_manager import web_manager
+
+from uniswap_hft.web3_manager import web_manager
 
 
 class TradingEngine:
@@ -45,6 +46,12 @@ class TradingEngine:
             token0_capital=token0_capital,
             provider=provider,
         )
+
+        # Set running flag to true if position_history is_open is true
+        if len(self.web3_manager.position_history) > 0:
+            if self.web3_manager.position_history[-1]["is_open"]:
+                self.running = True
+                self.logger.info("Trading engine is running")
 
     def start(self) -> dict:
         self.logger.info("Starting trading engine")
