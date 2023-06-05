@@ -53,8 +53,8 @@ class TokenManager:
             int: _description_
         """
         base = math.sqrt(1.0001)
-        p = math.sqrt(price / self.Q96)
-        return abs(int(2 * math.floor(math.log(p, base)))) #?? TODO: Why is it negative by default
+        p = price / self.Q96
+        return math.floor(math.log(p,base))
 
     def price_to_sqrt_price_x_96(self, price: float) -> float:
         """Converts a price to a sqrt price, useable by Uniswap V3
