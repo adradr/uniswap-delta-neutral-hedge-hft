@@ -54,7 +54,7 @@ class TokenManager:
         """
         base = math.sqrt(1.0001)
         p = price / self.Q96
-        return math.floor(math.log(p,base))
+        return abs(math.floor(math.log(p,base)))
 
     def price_to_sqrt_price_x_96(self, price: float) -> float:
         """Converts a price to a sqrt price, useable by Uniswap V3
@@ -259,9 +259,3 @@ class TokenManager:
         currentTick = self.price_to_tick(currentPrice)
 
         return (lowerRange, currentPrice, upperRange, lowerTick, currentTick, upperTick)
-
-
-manager = TokenManager(6,18)
-print(manager.price_to_tick(2014.29))
-print(manager.price_to_tick(1923.74))
-print(manager.price_to_sqrt_price_x_96(2014.19))
