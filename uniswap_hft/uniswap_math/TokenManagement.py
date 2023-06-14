@@ -7,8 +7,9 @@
 """
 
 import math
-import numpy
 import typing
+
+import numpy
 
 
 class TokenManager:

@@ -1,8 +1,9 @@
 import time
+
 import ccxt
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 
 from uniswap_hft.uniswap_math import TokenManagement
 
