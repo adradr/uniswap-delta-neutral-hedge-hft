@@ -95,7 +95,7 @@ class TokenManager:
         """
         base = math.sqrt(1.0001)
         p = price / self.Q96
-        return int(abs(math.log(p, base)))
+        return round(abs(math.log(p, base)))
 
     def price_to_sqrt_price_x_96(self, price: float) -> float:
         """Converts a price to a sqrt price, useable by Uniswap V3
