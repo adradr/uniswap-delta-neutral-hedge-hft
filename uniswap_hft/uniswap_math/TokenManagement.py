@@ -95,8 +95,8 @@ class TokenManager:
         """
         base = math.sqrt(1.0001)
         p = price / self.Q96
-        return abs(math.floor(math.log(p,base)))
-    
+        return abs(math.floor(math.log(p, base)))
+
     def price_to_sqrt_price_x_96(self, price: float) -> float:
         """Converts a price to a sqrt price, useable by Uniswap V3
 
@@ -106,7 +106,10 @@ class TokenManager:
         Returns:
             int: The converted sqrt price value
         """
-        return math.sqrt((10 ** (self.token0_decimal - self.token1_decimal)) * price) * self.Q96
+        return (
+            math.sqrt((10 ** (self.token0_decimal - self.token1_decimal)) * price)
+            * self.Q96
+        )
 
     def sqrt_price_x_96_to_price(self, sqrt_price_x_96: int) -> float:
         """Converts a sqrt price to a price, useable by Uniswap V3
@@ -187,14 +190,14 @@ class TokenManager:
             current_tick,
             upper_tick,
         )
-    
+
     def range_from_tick(currentTick: int, percentage: int) -> Tuple:
         """Returns a Tuple, with the lower and upper ticks
 
         Args:
-            currentTick(int): The tick corresponding to the current price, obtained from 
+            currentTick(int): The tick corresponding to the current price, obtained from
                               the Uniswap V3 pool contract
-            
+
             percentage(int): The percentage of the range
 
         Returns:
