@@ -8,6 +8,7 @@
 
 import math
 import typing
+from typing import Tuple
 
 import numpy
 
@@ -94,8 +95,8 @@ class TokenManager:
         """
         base = math.sqrt(1.0001)
         p = price / self.Q96
-        return math.floor(math.log(p, base))
-
+        return abs(math.floor(math.log(p,base)))
+    
     def price_to_sqrt_price_x_96(self, price: float) -> float:
         """Converts a price to a sqrt price, useable by Uniswap V3
 
@@ -105,7 +106,7 @@ class TokenManager:
         Returns:
             int: The converted sqrt price value
         """
-        return math.sqrt((self.token0_decimal / self.token1_decimal) / price) * self.Q96
+        return math.sqrt((10 ** (self.token0_decimal - self.token1_decimal)) * price) * self.Q96
 
     def sqrt_price_x_96_to_price(self, sqrt_price_x_96: int) -> float:
         """Converts a sqrt price to a price, useable by Uniswap V3
@@ -133,10 +134,7 @@ class TokenManager:
         decimal_diff = self.token0_decimal - self.token1_decimal
         return 1 / ((tick_basis_constant**tick) * (10**decimal_diff))
 
-    def price_to_tick(
-        self,
-        price: float,
-    ) -> int:
+    def price_to_tick(self, price: float) -> int:
         """Converts a price to a tick, useable by Uniswap V3
 
         Args:
@@ -145,14 +143,9 @@ class TokenManager:
         Returns:
             int: The converted tick value
         """
-        tick_basis_constant = 1.0001
-        decimal_diff = self.token0_decimal - self.token1_decimal
-        return int(
-            round(
-                math.log(1 / (price * (10**decimal_diff)))
-                / math.log(tick_basis_constant)
-            )
-        )
+        sqrt_price = self.price_to_sqrt_price_x_96(price)
+        tick = self.sqrt_price_x_96_to_tick(sqrt_price)
+        return tick
 
     def price_to_sqrtp(self, price: float) -> int:
         """Converts a price to a sqrt price, useable by Uniswap V3
@@ -194,6 +187,24 @@ class TokenManager:
             current_tick,
             upper_tick,
         )
+    
+    def range_from_tick(currentTick: int, percentage: int) -> Tuple:
+        """Returns a Tuple, with the lower and upper ticks
+
+        Args:
+            currentTick(int): The tick corresponding to the current price, obtained from 
+                              the Uniswap V3 pool contract
+            
+            percentage(int): The percentage of the range
+
+        Returns:
+            Tuple(int, int): The lower and upper tick of the range
+        """
+        perc = (percentage / 100) / 2
+        deltaTick = int(math.log((1.00 + perc), 1.0001))
+        upperTick = currentTick + deltaTick
+        lowerTick = currentTick - deltaTick
+        return (lowerTick, upperTick)
 
     # Use 'get_liquidity' function to calculate liquidity as a function of amounts and price range
     @staticmethod
