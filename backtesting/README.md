@@ -4,6 +4,18 @@
 
 This internal document presents the result of our backtest on a Uniswap V3 strategy for the ETH/USDC pool with the aim to assess the impact of different configurations on performance, specifically focusing on the range and whether a hedging strategy was implemented.
 
+### Assumption for backtesting
+
+During this experiment due to the lack of data, it has been difficult to quite exactly scale up potiential fee revenue earned by unit of volume in the pool. Due to the lack of liquidity density data for each datapoint, we had to make an assumption in order to linearly scale this fee variable:
+
+- We are not significant liquidity providers in the pool based on `own_capital_usd / TVL` ratio.
+
+- Therefore related to the first point, even with narrow ranges we are not owning significant amount of the range
+
+If both of these assumptions are taken as true, we can linearly scale our rewards from a position we held open for 10 days of $100 face value, which earned $2.01 in that time period. If these assumptions are false in real life than the fee earner per volume unit would scale much more like a log function with diminishing returns as we are making the range narrower and owning more and more of the liquidity range.
+
+### Findings 
+
 Our findings indicate that both range percentage and hedging are vital factors influencing the strategy's performance. The key results of our backtest are summarized below:
 
 - The configuration that achieved the highest ROI (157.67%) had a range percentage of 0.25 and utilized hedging. This configuration also had the lowest drawdown (45.7%), indicating a relatively lower risk compared to other configurations.
@@ -25,6 +37,9 @@ Based on these findings, we suggest further exploration of the following additio
 3. Implementing stop-loss rules: To further control risk, the strategy could close the position and hedge it once the loss reaches a certain threshold.
 
 We hope these insights are helpful in refining our Uniswap V3 strategy. We recommend conducting additional backtests incorporating the strategies suggested above for further optimization.
+
+### Notes:
+- Range percentages are meant to be doubles, as they indicate what percentage from current price we are positioning our upper and lower range.
 
 ### Latest version of the nalysis notebook can be found here:
 - [HTML](uniswap_fee_and_divergence_results_analysis.html)
