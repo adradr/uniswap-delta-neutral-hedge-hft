@@ -26,4 +26,3 @@ jobs:
           emoji: true
           verbose: true
           job-summary: true
-          custom-arguments: "test"
