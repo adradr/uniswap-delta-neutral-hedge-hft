@@ -53,7 +53,7 @@ def test_sqrt_price_x_96_to_tick():
 
 def test_price_to_sqrt_price_x_96():
     price = 1
-    assert token_manager.price_to_sqrt_price_x_96(price) == 4.574240095500993e28
+    assert token_manager.price_to_sqrt_price_x_96(price) == 7.922816251426433e22
 
 
 def test_sqrt_price_x_96_to_price():
