@@ -26,6 +26,7 @@ setup(
         ],
     },
     install_requires=[
+        "aiohttp",
         "pytest",
         "pandas",
         "numpy",
