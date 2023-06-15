@@ -106,7 +106,11 @@ class Web3Manager:
 
         # Initialize tokenManager
         self.tokenManager = TokenManagement.TokenManager(
-            token0_decimal=self.decimal0, token1_decimal=self.decimal1
+            current_price=self.uniswap.get_current_price(),
+            range_pct=self.range_percentage,
+            target_amount=self.token0_capital,
+            token0_decimal=self.decimal0,
+            token1_decimal=self.decimal1,
         )
 
         # Get token amount from pool address
@@ -347,13 +351,12 @@ class Web3Manager:
             percentage=self.range_percentage, current_price=current_price
         )
 
-        # Calculate amounts
-        self.amount0, self.amount1 = self.tokenManager.calculate_amounts(
+        # Calculate required amounts
+        self.amount1, self.amount0 = self.tokenManager.calculate_amounts(
             current_price=current_price,
-            range_low=range_low,
-            range_high=range_high,
-            total_token0_amount=self.token0_capital,
         )
+        self.amount0 = int(self.amount0 * 10**self.tokenManager.token0_decimal)
+        self.amount1 = int(self.amount1 * 10**self.tokenManager.token1_decimal)
 
         # Get token amounts
         self.update_balance()

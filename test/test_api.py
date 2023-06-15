@@ -13,8 +13,8 @@ def test_engine():
         pool_fee=500,
         wallet_address="0x1234567890123456789012345678901234567890",  # type: ignore
         wallet_private_key="0x1234567890123456789012345678901234567890123456789012345678901234",
-        range_percentage=0,
-        token0_capital=0,
+        range_percentage=10,
+        token0_capital=1000,
         provider="http://cloudflare-eth.com",
     )
 
