@@ -12,6 +12,7 @@ setup(
         "uniswap_hft.uniswap_v3",
         "uniswap_hft.web3_manager",
         "uniswap_hft.trading_engine",
+        "uniswap_hft.scheduler",
         "uniswap_hft.telegram_interface",
     ],
     package_data={
@@ -26,6 +27,7 @@ setup(
         ],
     },
     install_requires=[
+        "requests",
         "aiohttp",
         "pytest",
         "pandas",
@@ -37,6 +39,7 @@ setup(
         "flask_jwt_extended",
         "cherrypy",
         "apscheduler",
+        "sqlalchemy",
         "psutil",
         "ccxt",
         "web3==5.30.0",
