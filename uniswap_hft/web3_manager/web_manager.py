@@ -3,8 +3,8 @@ import json
 import logging
 import time
 from typing import Tuple, Union
-import pysnooper
 
+import pysnooper
 from eth_typing.evm import ChecksumAddress
 from web3.types import TxReceipt
 
