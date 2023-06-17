@@ -25,6 +25,25 @@ def web3_manager():
     )
 
 
+def test_swap_amounts_no_swap_needed(web3_manager):
+    with patch.object(web3_manager, "update_balance"), patch.object(
+        web3_manager, "uniswap"
+    ), patch("logging.getLogger"):
+        web3_manager.token0Balance = 10**6 * 1000 * 1.01
+        web3_manager.token1Balance = 10**18 * 500 * 1.01
+        web3_manager.amount0 = 10**6 * 1000
+        web3_manager.amount1 = 10**18 * 500
+        web3_manager.tokenManager.token0_decimal = 6
+        web3_manager.tokenManager.token1_decimal = 18
+        web3_manager.uniswap.get_current_price.return_value = 1000
+
+        result = web3_manager.swap_amounts()
+
+        assert result is None
+        web3_manager.uniswap.get_current_price.assert_called_once()
+        web3_manager.uniswap.swap_token_input.assert_not_called()
+
+
 def test_swap_amounts_token0_to_token1(web3_manager):
     with patch.object(web3_manager, "update_balance"), patch.object(
         web3_manager, "uniswap"
