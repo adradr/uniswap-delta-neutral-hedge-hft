@@ -1,9 +1,11 @@
 import os
-import pytest
+from unittest.mock import patch
+
 import dotenv
-from unittest.mock import MagicMock, patch
+import pytest
 from web3.types import TxReceipt
-from uniswap_hft.web3_manager.web_manager import Web3Manager, InsufficientFunds
+
+from uniswap_hft.web3_manager.web_manager import InsufficientFunds, Web3Manager
 
 dotenv.load_dotenv()
 
