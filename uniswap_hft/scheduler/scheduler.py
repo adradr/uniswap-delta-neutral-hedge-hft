@@ -1,13 +1,14 @@
-import os
-import time
-import requests
 import argparse
 import logging
-import dotenv
-import apscheduler.schedulers.background
-import apscheduler.jobstores.sqlalchemy
-import apscheduler.executors.pool
+import os
+import time
 from typing import Optional
+
+import apscheduler.executors.pool
+import apscheduler.jobstores.sqlalchemy
+import apscheduler.schedulers.background
+import dotenv
+import requests
 
 # Load environment variables
 dotenv.load_dotenv()
