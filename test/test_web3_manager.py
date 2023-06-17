@@ -1,28 +1,19 @@
-import os
 from unittest.mock import patch
-
-import dotenv
 import pytest
 from web3.types import TxReceipt
-
 from uniswap_hft.web3_manager.web_manager import InsufficientFunds, Web3Manager
-
-dotenv.load_dotenv()
-
-RANGE_PCT = 10
-TOKEN0_CAPITAL = 1000
 
 
 @pytest.fixture
 def web3_manager():
     return Web3Manager(
-        pool_address=os.environ.get("POOL_ADDRESS"),  # type: ignore
-        pool_fee=os.environ.get("POOL_FEE"),  # type: ignore
-        wallet_address=os.environ.get("WALLET_ADDRESS"),  # type: ignore
-        wallet_private_key=os.environ.get("WALLET_PRIVATE_KEY"),  # type: ignore
-        range_percentage=RANGE_PCT,
-        token0_capital=TOKEN0_CAPITAL,
-        provider=os.environ.get("PROVIDER"),  # type: ignore
+        pool_address="0x45dda9cb7c25131df268515131f647d726f50608",
+        pool_fee=500,
+        wallet_address="0x0000000000000000000000000000000000000001",
+        wallet_private_key="0x0000000000000000000000000000000000000002",
+        range_percentage=10,
+        token0_capital=1000,
+        provider="https://polygon-rpc.com/",
         debug=True,
     )
 
