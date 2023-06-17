@@ -4,7 +4,6 @@ import logging
 import time
 from typing import Tuple, Union
 
-import pysnooper
 from eth_typing.evm import ChecksumAddress
 from web3.types import TxReceipt
 
@@ -186,7 +185,6 @@ class Web3Manager:
         )
         return logs_transfer[0]["args"]["tokenId"]
 
-    @pysnooper.snoop()
     def swap_amounts(self) -> Union[TxReceipt, None]:
         """Swaps the tokens in the wallet for the token with the least amount
 
