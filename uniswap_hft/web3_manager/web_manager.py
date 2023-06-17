@@ -195,8 +195,8 @@ class Web3Manager:
             TxReceipt: Transaction receipt of the swap
         """
         # Get existing token amounts
-        existing_amount0 = self.token0Balance
-        existing_amount1 = self.token1Balance
+        existing_amount0 = self.token0Balance  # USDC
+        existing_amount1 = self.token1Balance  # ETH
         existing_amount0_decimal = (
             existing_amount0 / 10**self.tokenManager.token0_decimal
         )
@@ -215,10 +215,11 @@ class Web3Manager:
         )
 
         # Get current price
-        current_price = self.uniswap.get_current_price()
+        current_price_decimal = self.uniswap.get_current_price()
+        current_price = current_price_decimal * 10**self.tokenManager.token0_decimal
 
         # Log current price and token amounts
-        self.logger.info(f"Current price: {current_price}")
+        self.logger.info(f"Current price: {current_price_decimal}")
         self.logger.info(
             f"Existing/Required amount for {self.token0_symbol}: "
             f"{existing_amount0_decimal } / {required_amount0_decimal}"
@@ -246,8 +247,8 @@ class Web3Manager:
             self.logger.error(e_msg)
             raise InsufficientFunds(e_msg)
 
+        # SWAP TOKEN1 FOR TOKEN0
         # Token0 amount is less than required
-        # SWAP TOKEN0 FOR TOKEN1
         elif existing_amount0 < required_amount0:
             # Check if token1 amount is enough for swap and required_amount1
             if existing_amount1 >= required_amount1 + (
@@ -262,8 +263,16 @@ class Web3Manager:
                 self.logger.error(e_msg)
                 raise InsufficientFunds(e_msg)
 
+            """
+            1000 USDC / 1 ETH
+            1000 * 10**6 / 1 * 10**18
+
+            1000 * 10**6 / 10**18 * 1 = 0,000000001 ETH / 1 * 10**6 USDC
+            1000 * 10**6 = 1 000 000 000 USDC / 1 * 10**18 ETH
+            """
+
+        # SWAP TOKEN0 FOR TOKEN1
         # Token1 amount is less than required
-        # SWAP TOKEN1 FOR TOKEN0
         elif existing_amount1 < required_amount1:
             # Check if token0 amount is enough for swap and required_amount0
             if existing_amount0 >= required_amount0 + (
