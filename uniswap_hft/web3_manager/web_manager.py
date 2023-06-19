@@ -329,6 +329,9 @@ class Web3Manager:
             current_tick > self.position_history[-1]["tick_upper"]
             or current_tick < self.position_history[-1]["tick_lower"]
         ):
+            # Log close position
+            self.logger.info("Price is outside of range. Closing position")
+
             # Close position
             self.close_position()
 
