@@ -22,6 +22,21 @@ services:
     networks:
       - uniswap-hft-network
 
+  uniswap-hft-scheduler:
+    build:
+      context: .
+    container_name: uniswap-hft-scheduler
+    env_file:
+      - .env
+    command: 
+      - "python"
+      - "-m"
+      - "uniswap_hft.scheduler.scheduler"
+    networks:
+      - uniswap-hft-network
+    depends_on:
+      - uniswap-hft-api
+
   uniswap-hft-telegram-bot:
     build:
       context: .
