@@ -21,8 +21,8 @@ class DataFetcher:
         self.exchange = exchange
         self.from_date = from_date
         self.to_date = to_date
-        self.from_date = self.exchange.parse8601(f"{from_date}T00:00:00Z")
         self.from_date_initial = self.from_date
+        self.from_date = self.exchange.parse8601(f"{from_date}T00:00:00Z")
         self.to_date = self.exchange.parse8601(f"{to_date}T00:00:00Z")
         self.symbol = symbol
         self.max_limit = max_limit
@@ -38,7 +38,7 @@ class DataFetcher:
                 data = self.exchange.fetch_ohlcv(
                     self.symbol,
                     timeframe="1h",
-                    since=self.from_date,
+                    since=self.from_date,  #  type: ignore
                     limit=self.max_limit,
                 )
                 if len(data) > 0:
@@ -73,7 +73,10 @@ class DataFetcher:
 
 class HedgeManager:
     def __init__(
-        self, initial_price: float, amount: float, exchange_fee: float
+        self,
+        initial_price: float,
+        amount: float,
+        exchange_fee: float,
     ) -> None:
         self.initial_price = initial_price
         self.amount = amount
@@ -104,6 +107,8 @@ class PositionManager:
         fee_per_volume: float,
         exchange_fee: float,
         is_hedged: bool,
+        swap_fee: float,
+        slippage: float,
         timestamp,
     ):
         """Position manager for Uniswap position and hedge
@@ -142,6 +147,8 @@ class PositionManager:
         self.exchange_fee = exchange_fee
         self.is_hedged = is_hedged
         self.net_usd_capital = 0
+        self.slippage = slippage
+        self.swap_fee = swap_fee
 
         # Calculate initial capital amounts
         if is_hedged:
@@ -182,6 +189,8 @@ class PositionManager:
         self.initial_usd_capital_uniswap = self.amount_token0 + (
             self.amount_token1 * price
         )
+        self.slippage = self.slippage * self.initial_usd_capital_uniswap * 0.5
+        self.swap_fee = self.swap_fee * self.initial_usd_capital_uniswap * 0.5
 
     def update_position(self, price, volume, timestamp):
         # Update token amounts
@@ -232,6 +241,8 @@ class PositionManager:
             self.current_usd_value_uniswap
             + self.current_usd_value_hedge
             + self.cumm_fee
+            - self.swap_fee
+            - self.slippage
             - self.hedge_manager.fee_cost
         )
 
@@ -263,6 +274,8 @@ class DataBacktester:
         fee_per_volume,
         exchange_fee,
         is_hedged,
+        slippage,
+        swap_fee,
     ):
         self.data = data
         self.capital_usd = capital_usd
@@ -270,6 +283,8 @@ class DataBacktester:
         self.fee_per_volume = fee_per_volume
         self.exchange_fee = exchange_fee
         self.is_hedged = is_hedged
+        self.slippage = slippage
+        self.swap_fee = swap_fee
         self.final_capital = 0
         self.roi = 0
         self.max_dd = 0
@@ -298,6 +313,8 @@ class DataBacktester:
                     fee_per_volume=self.fee_per_volume,
                     exchange_fee=self.exchange_fee,
                     is_hedged=self.is_hedged,
+                    slippage=self.slippage,
+                    swap_fee=self.swap_fee,
                 )
 
             # Update current position
@@ -328,6 +345,8 @@ class DataBacktester:
                             "current_usd_value_uniswap": self.current_position.current_usd_value_uniswap,
                             "current_usd_value_hedge": self.current_position.current_usd_value_hedge,
                             "net_usd_capital": self.current_position.net_usd_capital,
+                            "swap_fee": self.current_position.swap_fee,
+                            "slippage": self.current_position.slippage,
                             "amount_token0": self.current_position.amount_token0,
                             "amount_token1": self.current_position.amount_token1,
                             "upper_range": self.current_position.token_manager.upper_range,
@@ -360,6 +379,8 @@ class DataBacktester:
                     fee_per_volume=self.fee_per_volume,
                     exchange_fee=self.exchange_fee,
                     is_hedged=self.is_hedged,
+                    slippage=self.slippage,
+                    swap_fee=self.swap_fee,
                 )
 
         # Set index
@@ -401,8 +422,8 @@ class DataBacktester:
         fig, ax1 = plt.subplots(figsize=(15, 5))
 
         # Plot pnl_total and fee on the primary y-axis
-        ax1.plot(id_df.index, id_df["pnl_total"], alpha=0.3, color="g", label="PnL")
-        ax1.plot(id_df.index, id_df["fee"], alpha=0.3, color="b", label="Fee")
+        ax1.plot(id_df.index, id_df["pnl_total"], alpha=0.5, color="g", label="PnL")
+        ax1.plot(id_df.index, id_df["fee"], alpha=0.5, color="b", label="Fee")
         ax1.set_ylabel("Total PnL and Fees")
         ax1.grid(True)
         ax1.legend()
@@ -419,7 +440,7 @@ class DataBacktester:
         ax2.legend(loc="upper right")
         # Set the title of the plot
         plt.title(
-            "Uniswap and Hedge Positions\nPnL is the sum of pnl_uniswap and pnl_hedge\nFee is the cumulative fee earned\nVolume is the USD volume of the pool"
+            "Uniswap and Hedge Positions\nPnL is the sum of pnl_uniswap and pnl_hedge\nFee is the fee earned\nVolume is the USD volume of the pool"
         )
 
         # Show the plot
