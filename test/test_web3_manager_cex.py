@@ -1,16 +1,12 @@
+from unittest.mock import MagicMock
+
 import pytest
-from web3.types import TxReceipt
-from unittest.mock import patch, MagicMock
+
 import uniswap_hft.okex_integration.client
-from uniswap_hft.web3_manager.web_manager import (
-    Web3Manager,
-    InsufficientFunds,
-    BlocktradeFailed,
-    DepositFailed,
-    TransferFailed,
-    WithdrawFailed,
-    WithdrawTimeout,
-)
+from uniswap_hft.web3_manager.web_manager import (DepositFailed,
+                                                  InsufficientFunds,
+                                                  TransferFailed,
+                                                  Web3Manager, WithdrawTimeout)
 
 
 @pytest.fixture
