@@ -3,15 +3,17 @@ services:
   uniswap-hft-api:
     build:
       context: .
+    image: acrtradingdeskdev.azurecr.io/trading-engine/uniswap-hft:${TAG}
     container_name: uniswap-hft-api
+    env_file: 
+      - "${ENV_FILE}"
     volumes:
       - .:/docker-app
     ports:
       - "${PORT}:${PORT}"
     command: 
       - "python"
-      - "app.py"
-      - "${CEX_OR_DEX}"
+      - "app_${CEX_OR_DEX}.py"
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:${PORT}/healthcheck || exit 1"]
       interval: 15m
@@ -24,7 +26,10 @@ services:
   uniswap-hft-scheduler:
     build:
       context: .
+    image: acrtradingdeskdev.azurecr.io/trading-engine/uniswap-hft:${TAG}
     container_name: uniswap-hft-scheduler
+    env_file: 
+      - "${ENV_FILE}"
     command: 
       - "python"
       - "-m"
@@ -37,7 +42,10 @@ services:
   uniswap-hft-telegram-bot:
     build:
       context: .
+    image: acrtradingdeskdev.azurecr.io/trading-engine/uniswap-hft:${TAG}
     container_name: uniswap-hft-telegram-bot
+    env_file: 
+      - "${ENV_FILE}"
     command: 
       - "python"
       - "-m"
