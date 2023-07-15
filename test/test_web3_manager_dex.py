@@ -1,6 +1,8 @@
+from unittest.mock import MagicMock, patch
+
 import pytest
 from web3.types import TxReceipt
-from unittest.mock import patch, MagicMock
+
 from uniswap_hft.web3_manager.web_manager import InsufficientFunds, Web3Manager
 
 
