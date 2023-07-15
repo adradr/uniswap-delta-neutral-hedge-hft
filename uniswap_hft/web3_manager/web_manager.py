@@ -1138,7 +1138,7 @@ class Web3Manager:
 
         """
         # Check if position is open
-        if not self.position_history[-1]["open"]:
+        if not self.position_history[-1]["is_open"]:
             self.logger.info("No open position")
             return
 
