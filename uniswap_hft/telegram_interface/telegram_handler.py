@@ -109,6 +109,23 @@ class TelegramAPIHandler:
                     self.debug_mode = True
                     return None
 
+    def format_data_for_telegram(self, data, indent=0) -> str:
+        output = ""
+        for key, value in data.items():
+            if isinstance(value, dict):
+                output += "  " * indent + f"<b>{key}:</b>\n"
+                output += self.format_data_for_telegram(value, indent + 1)
+            elif isinstance(value, list):
+                for i, item in enumerate(value):
+                    output += "  " * indent + f"<b>{key} {i+1}:</b>\n"
+                    if isinstance(item, dict):
+                        output += self.format_data_for_telegram(item, indent + 1)
+                    else:
+                        output += "  " * indent + f"<i>{key} {i+1}</i>: {item}\n"
+            else:
+                output += "  " * indent + f"<i>{key}</i>: {value}\n"
+        return output
+
     @retry()
     async def _execute_api_command(
         self,
@@ -133,16 +150,21 @@ class TelegramAPIHandler:
                 headers=headers,
                 json=json,
             ) as resp:
+                # data = await resp.json()
+                # data = pprint.pformat(data)
+                # # Format data for Telegram
+                # data = data.replace("'", "")
+                # data = data.replace("{", "")
+                # data = data.replace("}", "")
+                # # data = data.replace(",", "\n")
+                # data = data.replace(":", " - ")
+                # Generate formatted string
                 data = await resp.json()
-                data = pprint.pformat(data)
-                # Format data for Telegram
-                data = data.replace("'", "")
-                data = data.replace("{", "")
-                data = data.replace("}", "")
-                # data = data.replace(",", "\n")
-                data = data.replace(":", " - ")
+                formatted_data = self.format_data_for_telegram(data)
 
-        await context.bot.send_message(context._chat_id, data)
+        await context.bot.send_message(
+            context._chat_id, formatted_data, parse_mode="HTML"
+        )
         logger.info(f"{command} executed")
 
     async def get_chat_id(self, update: telegram.Update, context) -> None:
