@@ -14,6 +14,92 @@ To rebalance the position, the bot close the Uniswap position and the CEX positi
 - API keys for a CEX (e.g. Binance, FTX, etc.) compatible with ccxt
 - EVM compatible private key (e.g. Ethereum, Polygon, etc.)
 
+## Makefile Documentation
+
+The Makefile in the project provides convenient shortcuts for building, running, and testing the project, as well as running the Telegram solution separately. Below are the available targets and their usage:
+
+## Targets
+
+### build
+
+Builds the Docker image using `docker-compose`.
+
+```bash
+make build
+```
+
+### up
+
+Runs the Docker containers defined in the `docker-compose.yml` file.
+
+```bash
+make up
+```
+
+### test
+
+Runs the tests using `pytest`.
+
+```bash
+make test
+```
+
+### telegram
+
+Runs the Telegram solution separately with the specified command. You can specify the environment file to use by setting the `ENV_FILE` variable. By default, it uses `rand.env`.
+
+```bash
+make telegram [ENV_FILE=<env-file>]
+```
+
+### help
+
+Displays the help message, showing the available targets and their usage.
+
+```bash
+make help
+```
+
+Note: By default, when running `make` without any target specified, it will print out the help message.
+
+## Usage
+
+To use the Makefile targets, open a terminal and navigate to the project directory. Then, run the desired target using the `make` command followed by the target name.
+
+For example, to build the Docker image, run:
+
+```bash
+make build
+```
+
+To run the Docker containers, use:
+
+```bash
+make up
+```
+
+If you want to specify a different environment file for the Telegram solution, you can pass the `ENV_FILE` variable:
+
+```bash
+make telegram ENV_FILE=./custom.env
+```
+
+To see the available targets and their usage, simply run:
+
+```bash
+make help
+
+Available targets:
+  build         Build the Docker image using docker-compose.
+  up            Run the Docker containers defined in the docker-compose.yml file.
+                ENV_FILE=<env-file> Specify the environment file to use.
+  test          Run the tests using pytest.
+  telegram      Run the Telegram solution separately with the specified command.
+                ENV_FILE=<env-file> Specify the environment file to use.
+  help          Display this help message.
+```
+
+
 # uniswap-hft package
 
 ## uniswap_hft.uniswap_math

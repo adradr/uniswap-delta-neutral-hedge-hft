@@ -6,13 +6,12 @@ services:
     container_name: uniswap-hft-api
     volumes:
       - .:/docker-app
-    env_file:
-      - .env
     ports:
       - "${PORT}:${PORT}"
     command: 
       - "python"
       - "app.py"
+      - "${CEX_OR_DEX}"
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:${PORT}/healthcheck || exit 1"]
       interval: 15m
@@ -26,8 +25,6 @@ services:
     build:
       context: .
     container_name: uniswap-hft-scheduler
-    env_file:
-      - .env
     command: 
       - "python"
       - "-m"
@@ -41,8 +38,6 @@ services:
     build:
       context: .
     container_name: uniswap-hft-telegram-bot
-    env_file:
-      - .env
     command: 
       - "python"
       - "-m"

@@ -1,33 +1,71 @@
 import logging
-
-from eth_typing.evm import ChecksumAddress
-
-from uniswap_hft.web3_manager import web_manager
+import typing
+import eth_typing.evm
+import uniswap_hft.web3_manager.web_manager
 
 
 class TradingEngine:
     def __init__(
         self,
-        pool_address: ChecksumAddress,
+        pool_address: eth_typing.evm.ChecksumAddress,
         pool_fee: int,
-        wallet_address: ChecksumAddress,
+        wallet_address: eth_typing.evm.ChecksumAddress,
         wallet_private_key: str,
         range_percentage: int,
         token0_capital: int,
         provider: str,
+        burn_on_close: bool = False,
         debug: bool = False,
+        position_history_path: str = "position_history.json",
+        cex_credentials: typing.Optional[
+            typing.Dict[str, typing.Dict[str, typing.Union[float, int, bool]]]
+        ] = None,
+        telegram_credentials: typing.Optional[typing.Dict] = None,
     ):
         """Initializes the trading engine
 
         Args:
-            pool_address (ChecksumAddress): Address of the pool to trade on
+            pool_address (eth_typing.evm.ChecksumAddress): Address of the pool to trade on
             pool_fee (int): Fee of the pool in percentage (e.g. 3000 for 0.3%)
-            wallet_address (ChecksumAddress): Address of the wallet to use
+            wallet_address (eth_typing.evm.ChecksumAddress): Address of the wallet to use
             wallet_private_key (str): Private key of the wallet
             range_percentage (int): Range of the position in percentage (e.g. 1 for 1%)
             token0_capital (int): How much of the funds should be used to provide liquidity for token0 (e.g. 1000 for 1000USDC). Note: it will be ~doubled for the total position size
             provider (str): Provider URL of the blockchain RPC, e.g. infura
+            burn_on_close (bool, optional): Whether to burn the position on close. Defaults to False.
             debug (bool, optional): Whether to enable debug logging. Defaults to False.
+            position_history_path (str, optional): Path to the position history file. Defaults to "position_history.json".
+            cex_credentials (Dict[str, Dict[str, str]]): The credentials for the OKEX API. Needs a dict with "main" and "subaccount" keys, containing a dictionaries  Defaults to None.
+                e.g.:
+                {
+                    "main": {
+                        "api_key": "your_api_key",
+                        "api_secret": "your_api_secret",
+                        "passphrase": "your_passphrase",
+                        "account_name": "your_account_name",
+                        "chain": "ETH",
+                        "maximum_spread_bps": 3, [optional, default: 3]
+                        "block_trading_deadline": 60, [optional, default: 60]
+                        "is_demo": False, [optional, default: False]
+                    },
+                    "subaccount": {
+                        "api_key": "your_api_key",
+                        "api_secret": "your_api_secret",
+                        "passphrase": "your_passphrase",
+                        "account_name": "your_account_name",
+                        "chain": "ETH",
+                        "maximum_spread_bps": 3, [optional, default: 3]
+                        "block_trading_deadline": 60, [optional, default: 60]
+                        "is_demo": False, [optional, default: False]
+
+                    },
+                }
+            telegram_credentials (Dict[str, str]): The credentials for the telegram bot. Needs a dict with "token" and "chat_id" keys, containing the token and the chat_id. Defaults to None.
+                e.g.:
+                {
+                    "bot_token": "your_token",
+                    "chat_id": "your_chat_id",
+                }
         """
         self.running = False
         self.logger = logging.getLogger(__name__)  # Retrieve the logger object
@@ -37,7 +75,7 @@ class TradingEngine:
         self.logger.setLevel(log_level)
 
         # Initialize web3 manager
-        self.web3_manager = web_manager.Web3Manager(
+        self.web3_manager = uniswap_hft.web3_manager.web_manager.Web3Manager(
             pool_address=pool_address,
             pool_fee=pool_fee,
             wallet_address=wallet_address,
@@ -45,6 +83,10 @@ class TradingEngine:
             range_percentage=range_percentage,
             token0_capital=token0_capital,
             provider=provider,
+            burn_on_close=burn_on_close,
+            position_history_path=position_history_path,
+            cex_credentials=cex_credentials,
+            telegram_credentials=telegram_credentials,
         )
 
         # Set running flag to true if position_history is_open is true
@@ -55,18 +97,18 @@ class TradingEngine:
 
     def start(self) -> dict:
         self.logger.info("Starting trading engine")
-        self.running = True
         self.web3_manager.open_position()
         self.logger.info("Started trading engine")
         self.logger.info("Current position: %s", self.web3_manager.position_history[-1])
+        self.running = True
         return self.web3_manager.position_history[-1]
 
     def stop(self) -> dict:
         self.logger.info("Stopping trading engine")
-        self.running = False
         self.web3_manager.close_position()
         self.logger.info("Stopped trading engine")
         self.logger.info("Closed position: %s", self.web3_manager.position_history[-1])
+        self.running = False
         return self.web3_manager.position_history[-1]
 
     def update_engine(self) -> dict:

@@ -6,11 +6,28 @@ from dotenv import load_dotenv
 
 from uniswap_hft.trading_engine import api, engine
 
-# Create parser
-load_dotenv()
-parser = argparse.ArgumentParser(description="Trading engine API")
 
-# Add arguments
+def str_to_bool(s):
+    if s == "True":
+        return True
+    elif s == "False":
+        return False
+    else:
+        raise ValueError
+
+
+# Create parser
+parser = argparse.ArgumentParser(description="Trading engine API")
+parser.add_argument(
+    "--env-file",
+    type=str,
+    help="Path to the .env file",
+    default=".env",
+)
+
+load_dotenv(parser.parse_args().env_file)
+
+# Add more arguments
 parser.add_argument(
     "--jwt-secret-key",
     type=str,
@@ -44,9 +61,9 @@ parser.add_argument(
 )
 parser.add_argument(
     "--debug",
-    type=bool,
+    type=str_to_bool,
     help="Whether to run the API in debug mode",
-    default=os.getenv("DEBUG"),
+    default=str_to_bool(os.getenv("DEBUG")),
 )
 
 parser.add_argument(
@@ -98,14 +115,23 @@ parser.add_argument(
     default=os.getenv("PROVIDER"),
 )
 
+parser.add_argument(
+    "--burn-on-close",
+    type=str_to_bool,
+    help="Whether to burn the remaining tokens on close",
+    default=str_to_bool(os.getenv("BURN_ON_CLOSE")),
+)
+
 # Parse arguments
 args = parser.parse_args()
 
 # Cast user and password pairs to tuples
-if args.allowed_users_passwords is not None:
-    args.allowed_users_passwords = [
-        tuple(pair.split(",")) for pair in args.allowed_users_passwords.split()
-    ]
+if args.allowed_users_passwords:
+    users_passwords = []
+    pairs = args.allowed_users_passwords.split(";")
+    for pair in pairs:
+        user, password = pair.split(":")
+        users_passwords.append((user, password))
 
 # Setup logging
 logging.basicConfig(
@@ -123,6 +149,8 @@ trading_engine = engine.TradingEngine(
     range_percentage=args.range_percentage,
     token0_capital=args.token0_capital,
     provider=args.provider,
+    burn_on_close=args.burn_on_close,
+    cex_credentials=None,
 )
 
 # Create trading API

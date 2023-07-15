@@ -11,6 +11,7 @@ setup(
         "uniswap_hft.uniswap_math",
         "uniswap_hft.uniswap_v3",
         "uniswap_hft.web3_manager",
+        "uniswap_hft.okex_integration",
         "uniswap_hft.trading_engine",
         "uniswap_hft.scheduler",
         "uniswap_hft.telegram_interface",
@@ -42,8 +43,10 @@ setup(
         "sqlalchemy",
         "psutil",
         "ccxt",
+        "python-okx",
         "web3==5.30.0",
         "uniswap-python",
         "python-telegram-bot",
+        "pysnooper",
     ],
 )

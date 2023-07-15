@@ -191,7 +191,7 @@ class TokenManager:
             upper_tick,
         )
 
-    def range_from_tick(currentTick: int, percentage: int) -> Tuple:
+    def range_from_tick(self, currentTick: int, percentage: int) -> Tuple[int, int]:
         """Returns a Tuple, with the lower and upper ticks
 
         Args:

@@ -2,13 +2,18 @@ import logging
 import time
 from functools import wraps
 from typing import Any, Callable, Union
+from eth_abi import encode_abi
 
 from web3 import Web3
 from web3.types import TxReceipt
 
 from .constants import MAX_UINT_128, _netid_to_name
-from .util import (_get_eth_simple_cache_middleware, _load_contract,
-                   _str_to_addr, nearest_tick)
+from .util import (
+    _get_eth_simple_cache_middleware,
+    _load_contract,
+    _str_to_addr,
+    nearest_tick,
+)
 
 
 # Retry decorator
@@ -147,11 +152,142 @@ class Uniswap:
         )
         self.token0_decimals = self.token0Contract.functions.decimals().call()
         self.token1_decimals = self.token1Contract.functions.decimals().call()
+        self.token0_symbol = self.token0Contract.functions.symbol().call()
+        self.token1_symbol = self.token1Contract.functions.symbol().call()
         self.Q96 = 2**96
+
+        # Set WETH address
+        self.weth_address = None
+        if self.token0_symbol == "WETH":
+            self.weth_address = self.token0
+        elif self.token1_symbol == "WETH":
+            self.weth_address = self.token1
+        if self.weth_address is not None:
+            self.weth = _load_contract(
+                self.w3, abi_name="uniswap-v3/weth", address=self.weth_address
+            )
+
+    def check_allowance(self):
+        """Check allowance for trading on the exchange."""
+
+        # Check allowance for token0
+        self.token0_allowance = self.token0Contract.functions.allowance(
+            self.address, self.router_address
+        ).call()
+        if self.token0_allowance < self.max_approval_check_int:
+            self.logger.info(
+                f"Approving {self.token0} for trading on {self.router_address} (router)"
+            )
+            self.approve(
+                self.token0Contract, self.router_address, self.max_approval_int
+            )
+
+        self.token0_allowance = self.token0Contract.functions.allowance(
+            self.address, self.nonFungiblePositionManager.address
+        ).call()
+        if self.token0_allowance < self.max_approval_check_int:
+            self.logger.info(
+                f"Approving {self.token0} for trading on {self.nonFungiblePositionManager.address} (NFT Manager)"
+            )
+            self.approve(
+                self.token0Contract,
+                self.nonFungiblePositionManager.address,
+                self.max_approval_int,
+            )
+
+        # Check allowance for token1
+        self.token1_allowance = self.token1Contract.functions.allowance(
+            self.address, self.router_address
+        ).call()
+        if self.token1_allowance < self.max_approval_check_int:
+            self.logger.info(
+                f"Approving {self.token1} for trading on {self.router_address} (Router)"
+            )
+            self.approve(
+                self.token1Contract, self.router_address, self.max_approval_int
+            )
+
+        self.token1_allowance = self.token1Contract.functions.allowance(
+            self.address, self.nonFungiblePositionManager.address
+        ).call()
+        if self.token1_allowance < self.max_approval_check_int:
+            self.logger.info(
+                f"Approving {self.token1} for trading on {self.nonFungiblePositionManager.address} (NFT Manager)"
+            )
+            self.approve(
+                self.token1Contract,
+                self.nonFungiblePositionManager.address,
+                self.max_approval_int,
+            )
+
+    def approve(self, token_contract, spender, amount):
+        """Approve a spender to spend an amount of a token.
+
+        Args:
+            token_contract (web3._utils.datatypes.Contract): The contract of the token.
+            spender (str): The spender address.
+            amount (int): The amount to approve.
+        """
+        tx = token_contract.functions.approve(spender, amount).buildTransaction(
+            {
+                "from": self.address,
+                "nonce": self.w3.eth.getTransactionCount(self.address),
+            }
+        )
+        signed_tx = self.w3.eth.account.sign_transaction(
+            tx, private_key=self.private_key
+        )
+        tx_hash = self.w3.eth.sendRawTransaction(signed_tx.rawTransaction)
+        return self.w3.eth.waitForTransactionReceipt(tx_hash)
 
     def _deadline(self) -> int:
         """Get a predefined deadline. 10min by default (same as the Uniswap SDK)."""
-        return int(time.time()) + 10 * 60
+        return int(time.time()) + (10 * 60)
+
+    def wrap_eth(self, amount: int):
+        """Wrap ETH to WETH.
+
+        Args:
+            amount (int): The amount of ETH to wrap.
+        """
+        if self.weth_address is None:
+            raise ValueError("WETH address is not set.")
+
+        tx = self.weth.functions.deposit().buildTransaction(
+            {
+                "from": self.address,
+                "value": amount,
+                "nonce": self.w3.eth.getTransactionCount(self.address),
+                "gasPrice": self.w3.eth.gasPrice,
+            }
+        )
+        signed_tx = self.w3.eth.account.sign_transaction(
+            tx, private_key=self.private_key
+        )
+        tx_hash = self.w3.eth.sendRawTransaction(signed_tx.rawTransaction)
+        return self.w3.eth.waitForTransactionReceipt(tx_hash)
+
+    def unwrap_weth(self, amount: int):
+        """Unwrap WETH to ETH.
+
+        Args:
+            amount (int): The amount of WETH to unwrap.
+        """
+        if self.weth_address is None:
+            raise ValueError("WETH address is not set.")
+
+        tx = self.weth.functions.withdraw(amount).buildTransaction(
+            {
+                "from": self.address,
+                "nonce": self.w3.eth.getTransactionCount(self.address),
+                "gasPrice": self.w3.eth.gasPrice,
+            }
+        )
+        signed_tx = self.w3.eth.account.sign_transaction(
+            tx, private_key=self.private_key
+        )
+        tx_hash = self.w3.eth.sendRawTransaction(signed_tx.rawTransaction)
+        return self.w3.eth.waitForTransactionReceipt(tx_hash)
 
     @retry_on_exception()
     def get_current_price(self) -> float:
@@ -178,7 +314,71 @@ class Uniswap:
         # Adjust for decimals
         decimal_diff = abs(self.token0_decimals - self.token1_decimals)
         price_weth_per_usdc = price_weth_per_usdc * 10**decimal_diff
-        return price_weth_per_usdc
+
+        # Map the price to the token0 so always get a USD price
+        if self.token0_symbol == "ETH" or self.token0_symbol == "WETH":
+            return price_usdc_per_weth * 10**decimal_diff
+        elif self.token0_symbol == "USDC":
+            return price_weth_per_usdc
+        else:
+            raise ValueError("Token0 is not ETH or WETH or USDC")
+
+    def get_token_balances(self):
+        """Gets the current token balance of the wallet for token0 and token1"""
+        token0_balance = self.token0Contract.functions.balanceOf(self.address).call()
+        token1_balance = self.token1Contract.functions.balanceOf(self.address).call()
+        return {
+            "token0_balance": token0_balance,
+            "token1_balance": token1_balance,
+            "token0_symbol": self.token0_symbol,
+            "token1_symbol": self.token1_symbol,
+        }
+
+    def transfer_token(self, token_contract, recipient, amount) -> TxReceipt:
+        """Transfer a token to a recipient.
+
+        Args:
+            token_contract (web3._utils.datatypes.Contract): The contract of the token.
+            recipient (str): The recipient address.
+            amount (int): The amount to transfer.
+        """
+        recipient = Web3.toChecksumAddress(recipient)
+        tx = token_contract.functions.transfer(recipient, amount).buildTransaction(
+            {
+                "from": self.address,
+                "nonce": self.w3.eth.getTransactionCount(self.address),
+            }
+        )
+        signed_tx = self.w3.eth.account.sign_transaction(
+            tx, private_key=self.private_key
+        )
+        tx_hash = self.w3.eth.sendRawTransaction(signed_tx.rawTransaction)
+        return self.w3.eth.waitForTransactionReceipt(tx_hash)
+
+    def transfer_eth(self, recipient, amount) -> TxReceipt:
+        """Transfer ETH to a recipient.
+
+        Args:
+            recipient (str): The recipient address.
+            amount (int): The amount to transfer.
+        """
+        recipient = Web3.toChecksumAddress(recipient)
+        tx = {
+            "from": self.address,
+            "to": recipient,
+            "value": amount,
+            "nonce": self.w3.eth.getTransactionCount(self.address),
+            "gasPrice": self.w3.eth.gasPrice,
+        }
+
+        # Estimate gas
+        tx["gas"] = self.w3.eth.estimateGas(tx)
+
+        signed_tx = self.w3.eth.account.sign_transaction(
+            tx, private_key=self.private_key
+        )
+        tx_hash = self.w3.eth.sendRawTransaction(signed_tx.rawTransaction)
+        return self.w3.eth.waitForTransactionReceipt(tx_hash)
 
     @retry_on_exception()
     def mint_liquidity(
@@ -220,6 +420,24 @@ class Uniswap:
             "recipient": recipient,
             "deadline": deadline,
         }
+
+        # Print params line by line
+        self.logger.info(f"mint_liquidity params:")
+        self.logger.info("\n".join([f"{k}: {v}" for k, v in params.items()]))
+
+        params = (
+            self.token0,
+            self.token1,
+            fee,
+            tick_lower,
+            tick_upper,
+            amount_0,
+            amount_1,
+            0,  # or any other minimum you want to set
+            0,  # or any other minimum you want to set
+            recipient,
+            deadline,
+        )
 
         # Estimate the gas required for transaction
         gas_estimate = self.nonFungiblePositionManager.functions.mint(

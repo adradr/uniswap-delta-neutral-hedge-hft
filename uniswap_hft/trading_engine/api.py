@@ -3,9 +3,13 @@ import logging
 import time
 
 from flask import Flask, jsonify, request
-from flask_jwt_extended import (JWTManager, create_access_token,
-                                create_refresh_token, get_jwt_identity,
-                                jwt_required)
+from flask_jwt_extended import (
+    JWTManager,
+    create_access_token,
+    create_refresh_token,
+    get_jwt_identity,
+    jwt_required,
+)
 
 from uniswap_hft.trading_engine import engine
 
@@ -161,7 +165,9 @@ class TradingEngineAPI:
                         "status": "success",
                         "message": f"Stats for {type(self.engine).__name__}",
                         "engine": "running" if self.engine.running else "stopped",
-                        "stats": self.engine.web3_manager.position_history[-1],
+                        "stats": self.engine.web3_manager.position_history[-1]
+                        if self.engine.running
+                        else None,
                     }
                 ),
                 200,
@@ -243,4 +249,6 @@ class TradingEngineAPI:
             )
 
     def run(self):
-        self.app.run(debug=self.debug, port=self.port, host=self.host)
+        self.app.run(
+            debug=self.debug, use_reloader=False, port=self.port, host=self.host
+        )
