@@ -8,7 +8,7 @@ services:
     env_file: 
       - "${ENV_FILE}"
     volumes:
-      - .:/docker-app
+      - ./${POSITION_HISTORY_PATH}:/docker-app/${POSITION_HISTORY_PATH}
     ports:
       - "${PORT}:${PORT}"
     command: 
@@ -22,7 +22,12 @@ services:
       start_period: 15s
     networks:
       - uniswap-hft-network
-
+    logging:
+        driver: "json-file"
+        options:
+            max-size: "25m"
+            max-file: "10"
+            
   uniswap-hft-scheduler:
     build:
       context: .
@@ -38,6 +43,11 @@ services:
       - uniswap-hft-network
     depends_on:
       - uniswap-hft-api
+    logging:
+        driver: "json-file"
+        options:
+            max-size: "25m"
+            max-file: "10"
 
   uniswap-hft-telegram-bot:
     build:
@@ -54,6 +64,11 @@ services:
       - uniswap-hft-network
     depends_on:
       - uniswap-hft-api
+    logging:
+        driver: "json-file"
+        options:
+            max-size: "25m"
+            max-file: "10"
 
 networks:
   uniswap-hft-network:
