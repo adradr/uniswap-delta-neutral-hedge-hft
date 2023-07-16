@@ -190,6 +190,7 @@ class Web3Manager:
                 "is_open": bool,
                 "last_update": datetime,
                 "message": str,
+                "token_url": str,
             }
         ]
         """
@@ -1141,7 +1142,8 @@ class Web3Manager:
         """
         # Check if position is open
         if not self.position_history[-1]["is_open"]:
-            self.logger.info("No open position")
+            self.logger.info("No open position, opening position")
+            self.open_position()
             return
 
         # Get current price and tick
@@ -1165,6 +1167,9 @@ class Web3Manager:
         ):
             # Log close position
             self.logger.info("Price is outside of range. Closing position")
+            self.logger.info(
+                f"Current tick: {current_tick}. Range: {self.position_history[-1]['tick_lower']} - {self.position_history[-1]['tick_upper']}"
+            )
 
             # Close position
             self.close_position()
@@ -1296,6 +1301,7 @@ class Web3Manager:
                 "is_open": True,
                 "last_update": self.get_current_time_str(),
                 "message": "success",
+                "token_url": f"https://app.uniswap.org/#/pool/{tokenId}",
             }
         )
 
