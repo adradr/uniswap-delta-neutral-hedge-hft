@@ -14,7 +14,7 @@ ENV_FILE ?= .env
 TAG ?= $(GIT_COMMIT)
 
 # Targets
-.PHONY: build up test telegram restart down logs
+.PHONY: build up pull restart down logs test telegram 
 
 build:
 	$(DOCKER_BUILDX) -t $(DOCKER_REPO):$(GIT_COMMIT) -t $(DOCKER_REPO):latest -f Dockerfile $(DOCKERFILE_PATH)
@@ -25,6 +25,18 @@ up:
 	else \
 		TAG=$(TAG) $(COMPOSE_COMMAND) up; \
 	fi
+
+pull:
+	$(COMPOSE_COMMAND) pull
+
+restart:
+	$(COMPOSE_COMMAND) restart
+
+down:
+	$(COMPOSE_COMMAND) down
+
+logs:
+	$(COMPOSE_COMMAND) logs -f
 
 test:
 	$(PYTHON_INTERPRETER) -m pytest
@@ -38,15 +50,6 @@ telegram:
 	print(os.environ);\
 	subprocess.run(['$(PYTHON_INTERPRETER)', '-m', '$(TELEGRAM_HANDLER)'])"
 
-restart:
-	$(COMPOSE_COMMAND) restart
-
-down:
-	$(COMPOSE_COMMAND) down
-
-logs:
-	$(COMPOSE_COMMAND) logs -f
-
 help:
 	@echo "Available targets:"
 	@echo "  build         Build the Docker image using docker-compose."
@@ -55,10 +58,14 @@ help:
 	@echo "  up            Run the Docker containers defined in the docker-compose.yml file."
 	@echo "                ENV_FILE=<env-file> Specify the environment file to use."
 	@echo "                TAG=<tag> Specify the tag to use for the Docker image."
-	@echo "  test          Run the tests using pytest."
-	@echo "  telegram      Run the Telegram solution separately with the specified command."
+	@echo "                DETACHED=<true|false> Specify whether to run the containers in detached mode."
+	@echo "  pull          Pull the Docker images defined in the docker-compose.yml file."
 	@echo "                ENV_FILE=<env-file> Specify the environment file to use."
+	@echo "                TAG=<tag> Specify the tag to use for the Docker image."
 	@echo "  restart       Restart the Docker containers."
 	@echo "  down          Stop and remove the Docker containers."
 	@echo "  logs          Show the logs of the Docker containers with the follow option."
+	@echo "  test          Run the tests using pytest."
+	@echo "  telegram      Run the Telegram solution separately with the specified command."
+	@echo "                ENV_FILE=<env-file> Specify the environment file to use."
 	@echo "  help          Display this help message."
