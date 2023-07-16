@@ -150,14 +150,6 @@ class TelegramAPIHandler:
                 headers=headers,
                 json=json,
             ) as resp:
-                # data = await resp.json()
-                # data = pprint.pformat(data)
-                # # Format data for Telegram
-                # data = data.replace("'", "")
-                # data = data.replace("{", "")
-                # data = data.replace("}", "")
-                # # data = data.replace(",", "\n")
-                # data = data.replace(":", " - ")
                 # Generate formatted string
                 data = await resp.json()
                 formatted_data = self.format_data_for_telegram(data)

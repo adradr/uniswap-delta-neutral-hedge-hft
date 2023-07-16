@@ -224,7 +224,7 @@ class Web3Manager:
             self.token1_symbol_cex = "ETH"
 
         # Initialize tokenManager
-        self.tokenManager = uniswap_hft.uniswap_math.TokenManagement.TokenManager(  #     current_price=self.get_current_price(),
+        self.tokenManager = uniswap_hft.uniswap_math.TokenManagement.TokenManager(
             range_pct=self.range_percentage,
             target_amount=self.token0_capital,
             token0_decimal=min(self.decimal0, self.decimal1),
@@ -1204,6 +1204,16 @@ class Web3Manager:
         # Get current price
         current_price = self.get_current_price()
         current_tick = self.get_current_tick()
+        # Initialize tokenManager
+        self.tokenManager = uniswap_hft.uniswap_math.TokenManagement.TokenManager(
+            range_pct=self.range_percentage,
+            target_amount=self.token0_capital,
+            token0_decimal=min(self.decimal0, self.decimal1),
+            token1_decimal=max(self.decimal0, self.decimal1),
+            current_price=self.uniswap.get_current_price(),
+        )
+
+        # Calculate amounts
         (tick_low, tick_high) = self.tokenManager.range_from_tick(
             currentTick=current_tick,
             percentage=self.range_percentage,
@@ -1350,8 +1360,15 @@ class Web3Manager:
         Returns:
             web3.types.TxReceipt: Transaction receipt of the close position
         """
+
+        self.logger.info("Trying to close position...")
+        if not self.position_history[-1]["is_open"]:
+            self.logger.info("No open position found")
+            return
+
         # Close position at uniswap
         token_id = self.position_history[-1]["tokenID"]
+        self.logger.info(f"Closing position with tokenId: {token_id}")
 
         # Get transaction receipts
         receipt_remove_liquidity = self.uniswap.decrease_liquidity(tokenId=token_id)
