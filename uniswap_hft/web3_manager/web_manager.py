@@ -678,6 +678,9 @@ class Web3Manager:
         self, amounts, amounts_key, currency
     ) -> dict:
         # Transfer funds to main account
+        self.logger.info(
+            f"Transferring funds to main account, {amounts_key}: {amounts[amounts_key]} {currency}..."
+        )
         transfer_response = (
             self.cex_client_main.transfer_from_subaccount_to_mainaccount(
                 from_account="trading",
@@ -693,7 +696,7 @@ class Web3Manager:
             self.send_telegram_message(message=e_msg)
             raise TransferFailed(e_msg)
         self.logger.info(
-            f"Transfer funds to main account, {amounts_key}: {transfer_response}"
+            f"Transfered funds to main account, {amounts_key}: {transfer_response}"
         )
         return transfer_response
 
@@ -735,7 +738,10 @@ class Web3Manager:
         currency: str,
         max_deadline: int = 300,
     ) -> dict:
-        # Withdraw funds from OKX to Metamask token0
+        # Withdraw funds from OKX to Metamask
+        self.logger.info(
+            f"Withdrawing {amounts[amounts_key]} {currency} from OKX to Metamask..."
+        )
         withdraw_response = self.cex_client_main.withdraw_from_mainaccount(
             currency=currency,
             amount=amounts[amounts_key],
@@ -747,7 +753,7 @@ class Web3Manager:
             self.send_telegram_message(message=e_msg)
             raise WithdrawFailed(e_msg)
         self.logger.info(
-            f"Withdraw {amounts[amounts_key]} {currency} from OKX to Metamask: {withdraw_response}"
+            f"Withdrawn {amounts[amounts_key]} {currency} from OKX to Metamask: {withdraw_response}"
         )
         self.wait_for_withdrawal_okx_blocktrading(
             wallet_amount=wallet_amount,
