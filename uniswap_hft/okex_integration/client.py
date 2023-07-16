@@ -455,6 +455,7 @@ class OKXClient:
         deadline: int = 120,
         tgtCcy: str = "base_ccy",
     ) -> dict:
+        # Casting OKX values for ease of use
         allow_partial_fill_str = "true" if allow_partial_fill else "false"
         act_anonymous_str = "true" if act_anonymous else "false"
 
@@ -466,10 +467,8 @@ class OKXClient:
         legs = [
             {
                 "instId": symbol,
-                # "tdMode":"cross",
-                # "ccy": "USDT",
                 "sz": amount,
-                "side": side,
+                "side": "buy",
                 "tgtCcy": tgtCcy,  # ccy of the size
             }
         ]
@@ -497,14 +496,14 @@ class OKXClient:
         start_time = time.time()
 
         while True:
-            quote_response = self.block_trading_manager.get_quotes(rfqId=rfq_id)
+            quote_response = self.block_trading_manager.get_quotes(
+                rfqId=rfq_id, state="active"
+            )
             quotes = quote_response["data"]
+            logger.info(f"Quotes received: {len(quotes)}")
+            logger.info(f"Quotes: {quotes}")
             sell_side = [q for q in quotes if q["quoteSide"] == "sell"]
             buy_side = [q for q in quotes if q["quoteSide"] == "buy"]
-
-            # Filter out expired quotes, take only active quotes
-            sell_side = [q for q in sell_side if q["state"] == "active"]
-            buy_side = [q for q in buy_side if q["state"] == "active"]
 
             # Unpack single legs into a single key
             for q in sell_side:
@@ -518,23 +517,23 @@ class OKXClient:
                     e_msg = "No quotes received in 60 seconds"
                     logger.info(e_msg)
                     raise BlockTradingNoQuote(e_msg)
+                time.sleep(1)
+                continue
+
+            # Filter for best quotes on each side
+            sell_quote = max(buy_side, key=lambda x: x["legs"]["px"])
+            buy_quote = min(sell_side, key=lambda x: x["legs"]["px"])
 
             # Calculate the spreads
             spread_bps_list = []
-            for sell_quote in sell_side:
-                for buy_quote in buy_side:
-                    sell_quote_px = float(sell_quote["legs"]["px"])
-                    quote_id = (
-                        buy_quote["quoteId"]
-                        if side == "sell"
-                        else sell_quote["quoteId"]
-                    )
-                    buy_quote_px = float(buy_quote["legs"]["px"])
-                    spread_bps = ((sell_quote_px / buy_quote_px) - 1) * 10000
-                    spread_bps = round(spread_bps, 2)
-                    spread_bps_list.append(
-                        (buy_quote_px, spread_bps, sell_quote_px, quote_id)
-                    )
+            # for sell_quote in sell_side:
+            #     for buy_quote in buy_side:
+            sell_quote_px = float(sell_quote["legs"]["px"])
+            buy_quote_px = float(buy_quote["legs"]["px"])
+            spread_bps = ((sell_quote_px / buy_quote_px) - 1) * 10000
+            spread_bps = round(spread_bps, 2)
+            quote_id = sell_quote["quoteId"] if side == "sell" else buy_quote["quoteId"]
+            spread_bps_list.append((buy_quote_px, spread_bps, sell_quote_px, quote_id))
 
             # Print best available spread
             if len(spread_bps_list) > 0:
@@ -573,6 +572,8 @@ class OKXClient:
                 best_spread = filtered_spreads[0]
                 quote_id = best_spread[3]
 
+                # Execute the quote
+                logger.info(f"Executing quote {quote_id}")
                 return self.block_trading_manager.execute_quote(
                     rfqId=rfq_id, quoteId=quote_id, legs=legs
                 )

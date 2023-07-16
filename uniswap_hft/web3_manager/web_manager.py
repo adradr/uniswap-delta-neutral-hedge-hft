@@ -811,6 +811,14 @@ class Web3Manager:
                 amounts["cex_symbol"], direction, amounts[amounts_key]
             )
             self.logger.info(block_trade_response)
+
+            # Check if block trade was successful
+            if block_trade_response["code"] != "0":
+                e_msg = f"Blocktrade failed({amounts_key}): {block_trade_response}"
+                self.logger.error(e_msg)
+                self.send_telegram_message(message=e_msg)
+                raise BlocktradeFailed(e_msg)
+
             return {"token_swap": block_trade_response}
 
         except uniswap_hft.okex_integration.client.BlockTradingNoQuote as e_msg:
@@ -905,7 +913,7 @@ class Web3Manager:
             return_values.append(
                 self.block_trade_okx_blocktrading(
                     amounts=amounts,
-                    direction="buy",
+                    direction="sell",
                     amounts_key="diff_amount1_in_token0",
                 )
             )
@@ -921,7 +929,7 @@ class Web3Manager:
             return_values.append(
                 self.block_trade_okx_blocktrading(
                     amounts=amounts,
-                    direction="sell",
+                    direction="buy",
                     amounts_key="diff_amount0_in_token0",
                 )
             )
@@ -1347,11 +1355,19 @@ class Web3Manager:
 
         # Get transaction receipts
         receipt_remove_liquidity = self.uniswap.decrease_liquidity(tokenId=token_id)
-        receipt_collect_fees = self.uniswap.collect_fees(tokenId=token_id)
-
-        # Get the transaction hash from the receipt objects
         remove_liquidity_tx_hash = receipt_remove_liquidity.transactionHash.hex()  # type: ignore
+        self.logger.info(
+            f"Remove liquidity transaction confirmed\n"
+            f"TokenId: {token_id}\n"
+            f"TxHash: {remove_liquidity_tx_hash}"
+        )
+        receipt_collect_fees = self.uniswap.collect_fees(tokenId=token_id)
         collect_fees_tx_hash = receipt_collect_fees.transactionHash.hex()  # type: ignore
+        self.logger.info(
+            f"Collect fees transaction confirmed\n"
+            f"TokenId: {token_id}\n"
+            f"TxHash: {collect_fees_tx_hash}"
+        )
 
         # Unwrap the token WETH to ETH if using CEX
         if self.cex_credentials:
@@ -1361,19 +1377,16 @@ class Web3Manager:
             ]
             self.uniswap.unwrap_weth(amount=weth_amount)
 
-        # Make return tuple
-        return_tuple = (receipt_remove_liquidity, receipt_collect_fees, None)
-
         # Burn the token only if burn_on_close is True
         if self.burn_on_close:
             receipt_burn = self.uniswap.burn_token(tokenId=token_id)
             burn_tx_hash = receipt_burn.transactionHash.hex()  # type: ignore
-            self.position_history[-1]["tx_burn"] = burn_tx_hash
-            return_tuple = (
-                receipt_remove_liquidity,
-                receipt_collect_fees,
-                receipt_burn,
+            self.logger.info(
+                f"Burn token transaction confirmed\n"
+                f"TokenId: {token_id}\n"
+                f"TxHash: {burn_tx_hash}"
             )
+            self.position_history[-1]["tx_burn"] = burn_tx_hash
 
         # Save position history
         self.position_history[-1]["tx_decrease"] = remove_liquidity_tx_hash
@@ -1383,3 +1396,8 @@ class Web3Manager:
 
         # Save position history
         self.store_position_history()
+
+        # Notify telegram of closed position
+        self.send_telegram_message(
+            message=f"Position closed\n" f"TokenId: {token_id}\n"
+        )
