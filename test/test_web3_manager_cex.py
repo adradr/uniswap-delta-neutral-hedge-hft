@@ -3,10 +3,13 @@ from unittest.mock import MagicMock
 import pytest
 
 import uniswap_hft.okex_integration.client
-from uniswap_hft.web3_manager.web_manager import (DepositFailed,
-                                                  InsufficientFunds,
-                                                  TransferFailed, Web3Manager,
-                                                  WithdrawTimeout)
+from uniswap_hft.web3_manager.web_manager import (
+    DepositFailed,
+    InsufficientFunds,
+    TransferFailed,
+    Web3Manager,
+    WithdrawTimeout,
+)
 
 
 @pytest.fixture
@@ -237,19 +240,19 @@ def test_transfer_funds_from_sub_to_main_okx_blocktrading_failed(web3_manager_ce
 
 
 def test_wait_for_withdrawal_okx_blocktrading_timeup(web3_manager_cex):
-    web3_manager_cex.update_balance = MagicMock(return_value=(0, 0))
+    web3_manager_cex.update_wallet_balance = MagicMock(return_value=(0, 0))
     initial_amounts = 0
     with pytest.raises(WithdrawTimeout):
         web3_manager_cex.wait_for_withdrawal_okx_blocktrading(
             wallet_amount=initial_amounts,
             watch_amount="required_amount0_decimal",
             max_deadline=0.1,
-            sleep_time=0.1,
+            sleep_time=0.2,
         )
 
 
 def test_wait_for_withdrawal_okx_blocktrading_success(web3_manager_cex):
-    web3_manager_cex.update_balance = MagicMock(return_value=(1, 1))
+    web3_manager_cex.update_wallet_balance = MagicMock(return_value=(1, 1))
     initial_amounts = 0
 
     web3_manager_cex.wait_for_withdrawal_okx_blocktrading(
@@ -310,6 +313,14 @@ def test_swap_amounts_okx_blocktrading_success_no_swap_needed_enough_in_wallet(
                 "cex_existing_amount0_decimal": 1,
                 "cex_existing_amount1_decimal": 1,
             },
+            {
+                "existing_amount0": 0,
+                "existing_amount1": 0,
+                "required_amount0_decimal": 1,
+                "required_amount1_decimal": 1,
+                "cex_existing_amount0_decimal": 1,
+                "cex_existing_amount1_decimal": 1,
+            },
         ]
     )
 
@@ -319,11 +330,15 @@ def test_swap_amounts_okx_blocktrading_success_no_swap_needed_enough_in_wallet(
         return_value={"code": "0", "type": "deposit"},
     )
 
+    web3_manager_cex.check_required_and_existing_amounts = MagicMock(
+        return_value=("required_amount0_decimal", "required_amount1_decimal")
+    )
+
     web3_manager_cex.transfer_funds_from_sub_to_main_okx_blocktrading = MagicMock(
         return_value={"code": "0", "type": "transfer"}
     )
 
-    web3_manager_cex.update_balance = MagicMock(return_value=(0, 0))
+    web3_manager_cex.update_wallet_balance = MagicMock(return_value=(0, 0))
 
     web3_manager_cex.withdraw_amounts_okx_blocktrading = MagicMock(
         return_value={"code": "0", "type": "withdraw"}
@@ -368,7 +383,7 @@ def test_swap_amounts_okx_blocktrading_success_no_swap_needed_enough_in_cex(
         return_value={"code": "0", "type": "transfer"}
     )
 
-    web3_manager_cex.update_balance = MagicMock(return_value=(0, 0))
+    web3_manager_cex.update_wallet_balance = MagicMock(return_value=(0, 0))
 
     web3_manager_cex.withdraw_amounts_okx_blocktrading = MagicMock(
         return_value={"code": "0", "type": "withdraw"}
@@ -413,11 +428,15 @@ def test_swap_amounts_okx_blocktrading_success_swap_token0_to_token1(web3_manage
         return_value={"token_swap": {"code": "0", "type": "block_trade"}}
     )
 
+    web3_manager_cex.check_required_and_existing_amounts = MagicMock(
+        return_value=("required_amount0_decimal", "required_amount1_decimal")
+    )
+
     web3_manager_cex.transfer_funds_from_sub_to_main_okx_blocktrading = MagicMock(
         return_value={"code": "0", "type": "transfer"}
     )
 
-    web3_manager_cex.update_balance = MagicMock(return_value=(0, 0))
+    web3_manager_cex.update_wallet_balance = MagicMock(return_value=(0, 0))
 
     web3_manager_cex.withdraw_amounts_okx_blocktrading = MagicMock(
         return_value={"code": "0", "type": "withdraw"}
@@ -464,11 +483,15 @@ def test_swap_amounts_okx_blocktrading_success_swap_token1_to_token0(web3_manage
         return_value={"token_swap": {"code": "0", "type": "block_trade"}}
     )
 
+    web3_manager_cex.check_required_and_existing_amounts = MagicMock(
+        return_value=("required_amount0_decimal", "required_amount1_decimal")
+    )
+
     web3_manager_cex.transfer_funds_from_sub_to_main_okx_blocktrading = MagicMock(
         return_value={"code": "0", "type": "transfer"}
     )
 
-    web3_manager_cex.update_balance = MagicMock(return_value=(0, 0))
+    web3_manager_cex.update_wallet_balance = MagicMock(return_value=(0, 0))
 
     web3_manager_cex.withdraw_amounts_okx_blocktrading = MagicMock(
         return_value={"code": "0", "type": "withdraw"}
@@ -526,11 +549,15 @@ def test_swap_amounts_okx_blocktrading_success_swap_token1_to_token0_no_marketma
         }
     )
 
+    web3_manager_cex.check_required_and_existing_amounts = MagicMock(
+        return_value=("required_amount0_decimal", "required_amount1_decimal")
+    )
+
     web3_manager_cex.transfer_funds_from_sub_to_main_okx_blocktrading = MagicMock(
         return_value={"code": "0", "type": "transfer"}
     )
 
-    web3_manager_cex.update_balance = MagicMock(return_value=(0, 0))
+    web3_manager_cex.update_wallet_balance = MagicMock(return_value=(0, 0))
 
     web3_manager_cex.withdraw_amounts_okx_blocktrading = MagicMock(
         return_value={"code": "0", "type": "withdraw"}

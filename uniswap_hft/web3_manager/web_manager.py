@@ -233,7 +233,7 @@ class Web3Manager:
         )
 
         # Get token amount from pool address
-        self.token0Balance, self.token1Balance = self.update_balance()
+        self.token0Balance, self.token1Balance = self.update_wallet_balance()
 
         # Log pool info line by line
         self.logger.info("Pool info:")
@@ -325,7 +325,7 @@ class Web3Manager:
         )
         return logs_transfer[0]["args"]["tokenId"]
 
-    def update_balance(self):
+    def update_wallet_balance(self):
         """Updates the balances of the wallet for token0 and token1"""
         token0Balance = self.token0_contract.functions.balanceOf(
             self.wallet_address
@@ -345,7 +345,7 @@ class Web3Manager:
 
     def get_existing_required_amounts(self) -> dict:
         # Get existing token amounts
-        existing_amount0, existing_amount1 = self.update_balance()
+        existing_amount0, existing_amount1 = self.update_wallet_balance()
 
         existing_amount0_decimal = existing_amount0 / 10**self.decimal0
         existing_amount1_decimal = existing_amount1 / 10**self.decimal1
@@ -704,7 +704,10 @@ class Web3Manager:
         self,
         wallet_amount: float,
         watch_amount: typing.Literal[
-            "required_amount0_decimal", "required_amount1_decimal"
+            "required_amount0_decimal",
+            "required_amount1_decimal",
+            "cex_existing_amount0_decimal",
+            "cex_existing_amount1_decimal",
         ],
         max_deadline: int = 300,
         sleep_time: int = 5,
@@ -712,7 +715,7 @@ class Web3Manager:
         # Check if deposit is done
         deadline = time.time() + max_deadline
         while True:
-            amount0, amount1 = self.update_balance()
+            amount0, amount1 = self.update_wallet_balance()
             if watch_amount == "required_amount0_decimal":
                 amount = amount0
             elif watch_amount == "required_amount1_decimal":
@@ -733,7 +736,10 @@ class Web3Manager:
         wallet_amount: float,
         amounts: dict,
         amounts_key: typing.Literal[
-            "required_amount0_decimal", "required_amount1_decimal"
+            "required_amount0_decimal",
+            "required_amount1_decimal",
+            "cex_existing_amount0_decimal",
+            "cex_existing_amount1_decimal",
         ],
         currency: str,
         max_deadline: int = 300,
@@ -878,16 +884,6 @@ class Web3Manager:
                 )
             )
 
-        # TODO: Remove unnecessary comments
-        # cex_amounts = self.get_cex_balances()
-        # amounts["cex_existing_amount0"] = cex_amounts["cex_existing_amount0"]
-        # amounts["cex_existing_amount1"] = cex_amounts["cex_existing_amount1"]
-        # amounts["cex_existing_amount0_decimal"] = cex_amounts[
-        #     "cex_existing_amount0_decimal"
-        # ]
-        # amounts["cex_existing_amount1_decimal"] = cex_amounts[
-        #     "cex_existing_amount1_decimal"
-        # ]
         # Update CEX amounts after deposit
         amounts = self.get_amounts_okx_blocktrading()
         self.log_amounts_okx_blocktrading(amounts=amounts)
@@ -940,31 +936,38 @@ class Web3Manager:
             self.send_telegram_message(message=e_msg)
             raise InsufficientFunds(e_msg)
 
+        # Update CEX amounts after deposit
+        amounts = self.get_amounts_okx_blocktrading()
+        self.log_amounts_okx_blocktrading(amounts=amounts)
+        withdraw_amount0, withdraw_amount1 = self.check_required_and_existing_amounts(
+            amounts=amounts
+        )
+
         # Transfer funds to main account
         return_values.append(
             self.transfer_funds_from_sub_to_main_okx_blocktrading(
                 amounts=amounts,
-                amounts_key="required_amount0_decimal",
+                amounts_key=withdraw_amount0,
                 currency=self.token0_symbol_cex,
             )
         )
         return_values.append(
             self.transfer_funds_from_sub_to_main_okx_blocktrading(
                 amounts=amounts,
-                amounts_key="required_amount1_decimal",
+                amounts_key=withdraw_amount1,
                 currency=self.token1_symbol_cex,
             )
         )
 
         # Fetch pre-withdraw balances and withdraw funds to Metamask
-        wallet_amount0, wallet_amount1 = self.update_balance()
+        wallet_amount0, wallet_amount1 = self.update_wallet_balance()
 
         try:
             return_values.append(
                 self.withdraw_amounts_okx_blocktrading(
                     wallet_amount=wallet_amount0,
                     amounts=amounts,
-                    amounts_key="required_amount0_decimal",
+                    amounts_key=withdraw_amount0,
                     currency=self.token0_symbol_cex,
                 )
             )
@@ -973,7 +976,7 @@ class Web3Manager:
                 self.withdraw_amounts_okx_blocktrading(
                     wallet_amount=wallet_amount1,
                     amounts=amounts,
-                    amounts_key="required_amount1_decimal",
+                    amounts_key=withdraw_amount1,
                     currency=self.token1_symbol_cex,
                 )
             )
@@ -1006,6 +1009,46 @@ class Web3Manager:
             return_values.append(e.args[0])
 
         return return_values
+
+    def check_required_and_existing_amounts(
+        self,
+        amounts: typing.Dict,
+    ) -> typing.Tuple[
+        typing.Literal["required_amount0_decimal", "cex_existing_amount0_decimal"],
+        typing.Literal["required_amount1_decimal", "cex_existing_amount1_decimal"],
+    ]:
+        # Check if required and existing amounts are equal
+        pct_diff_amount0 = (
+            1
+            - amounts["required_amount0_decimal"]
+            / amounts["cex_existing_amount0_decimal"]
+        )
+        pct_diff_amount1 = (
+            1
+            - amounts["required_amount1_decimal"]
+            / amounts["cex_existing_amount1_decimal"]
+        )
+
+        # Define withdraw amounts
+        withdraw_amount0_key, withdraw_amount1_key = (
+            "required_amount0_decimal",
+            "required_amount1_decimal",
+        )
+
+        if pct_diff_amount0 < 0:
+            self.logger.warning(
+                f"Existing amount0 ({amounts['cex_existing_amount0_decimal']}) is less than required amount0 ({amounts['required_amount0_decimal']})"
+                f" (difference: {pct_diff_amount0 * 100:.2f} %)"
+                f" Use cex_existing_amount0_decimal for withdraw"
+            )
+        if pct_diff_amount1 < 0:
+            self.logger.warning(
+                f"Existing amount1 ({amounts['cex_existing_amount1_decimal']}) is less than required amount1 ({amounts['required_amount1_decimal']})"
+                f" (difference: {pct_diff_amount1 * 100:.2f} %)"
+                f" Use cex_existing_amount1_decimal for withdraw"
+            )
+
+        return withdraw_amount0_key, withdraw_amount1_key
 
     def handle_wait_for_withdrawal_okx_blocktrading_exception(
         self,
@@ -1236,7 +1279,7 @@ class Web3Manager:
         self.amount1 = int(self.amount1 * 10**self.decimal1)
 
         # Get token amounts
-        self.token0Balance, self.token1Balance = self.update_balance()
+        self.token0Balance, self.token1Balance = self.update_wallet_balance()
 
         history = {
             "amount0": self.amount0,
