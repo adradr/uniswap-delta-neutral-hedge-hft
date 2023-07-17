@@ -95,9 +95,9 @@ def test_update_engine(test_app):
         ).json["access_token"]
         headers = {"Authorization": f"Bearer {access_token}"}
         response = client.get("/update-engine", headers=headers)
-        assert response.status_code == 404
+        assert response.status_code == 200
         assert response.json["status"] == "error"
-        assert response.json["message"] == "Engine is not running"
+        assert response.json["message"] == "TradingEngine is not running"
 
 
 def test_update_params_empty_params(test_app):
@@ -108,7 +108,7 @@ def test_update_params_empty_params(test_app):
         ).json["access_token"]
         headers = {"Authorization": f"Bearer {access_token}"}
         response = client.post("/update-params", headers=headers, json={})
-        assert response.status_code == 401
+        assert response.status_code == 200
         assert response.json["status"] == "error"
         assert response.json["message"] == "Params are required"
 
@@ -134,9 +134,9 @@ def test_engine_stats_not_running(test_app):
         ).json["access_token"]
         headers = {"Authorization": f"Bearer {access_token}"}
         response = client.get("/stats", headers=headers)
-        assert response.status_code == 404
+        assert response.status_code == 200
         assert response.json["status"] == "error"
-        assert response.json["message"] == "Engine is not running"
+        assert response.json["message"] == "TradingEngine is not running"
 
 
 def test_engine_stats_running(test_app):

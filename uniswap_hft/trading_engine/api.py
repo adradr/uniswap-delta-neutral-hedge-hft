@@ -3,9 +3,13 @@ import logging
 import time
 
 from flask import Flask, jsonify, request
-from flask_jwt_extended import (JWTManager, create_access_token,
-                                create_refresh_token, get_jwt_identity,
-                                jwt_required)
+from flask_jwt_extended import (
+    JWTManager,
+    create_access_token,
+    create_refresh_token,
+    get_jwt_identity,
+    jwt_required,
+)
 
 from uniswap_hft.trading_engine import engine
 
@@ -92,7 +96,7 @@ class TradingEngineAPI:
                             "engine": "running" if self.engine.running else "stopped",
                         }
                     ),
-                    404,
+                    200,
                 )
 
             # Start the engine
@@ -115,16 +119,7 @@ class TradingEngineAPI:
         def stop_engine():
             # Return error if engine is not running
             if not self.engine.running:
-                return (
-                    jsonify(
-                        {
-                            "status": "error",
-                            "message": f"{type(self.engine).__name__} is not running",
-                            "engine": "running" if self.engine.running else "stopped",
-                        }
-                    ),
-                    404,
-                )
+                return self.engine_not_running()
 
             # Stop the engine
             position_history = self.engine.stop()
@@ -145,16 +140,7 @@ class TradingEngineAPI:
         @jwt_required()
         def engine_stats():
             if not self.engine.running:
-                return (
-                    jsonify(
-                        {
-                            "status": "error",
-                            "message": "Engine is not running",
-                            "engine": "running" if self.engine.running else "stopped",
-                        }
-                    ),
-                    404,
-                )
+                return self.engine_not_running()
             return (
                 jsonify(
                     {
@@ -174,16 +160,7 @@ class TradingEngineAPI:
         def update_engine():
             # Only update if engine is running
             if not self.engine.running:
-                return (
-                    jsonify(
-                        {
-                            "status": "error",
-                            "message": "Engine is not running",
-                            "engine": "running" if self.engine.running else "stopped",
-                        }
-                    ),
-                    404,
-                )
+                return self.engine_not_running()
 
             # Update engine
             position_history = self.engine.update_engine()
@@ -214,7 +191,7 @@ class TradingEngineAPI:
                             "engine": "running" if self.engine.running else "stopped",
                         }
                     ),
-                    401,
+                    200,
                 )
             # Update params
             self.engine.update_params(params)
@@ -243,6 +220,18 @@ class TradingEngineAPI:
                 ),
                 200,
             )
+
+    def engine_not_running(self):
+        return (
+            jsonify(
+                {
+                    "status": "error",
+                    "message": f"{type(self.engine).__name__} is not running",
+                    "engine": "running" if self.engine.running else "stopped",
+                }
+            ),
+            200,
+        )
 
     def run(self):
         self.app.run(
