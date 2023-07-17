@@ -3,13 +3,10 @@ from unittest.mock import MagicMock
 import pytest
 
 import uniswap_hft.okex_integration.client
-from uniswap_hft.web3_manager.web_manager import (
-    DepositFailed,
-    InsufficientFunds,
-    TransferFailed,
-    Web3Manager,
-    WithdrawTimeout,
-)
+from uniswap_hft.web3_manager.web_manager import (DepositFailed,
+                                                  InsufficientFunds,
+                                                  TransferFailed, Web3Manager,
+                                                  WithdrawTimeout)
 
 
 @pytest.fixture
