@@ -1267,8 +1267,8 @@ class Web3Manager:
         self.token0Balance, self.token1Balance = self.update_wallet_balance()
 
         return {
-            "amount0": self.amount0,
-            "amount1": self.amount1,
+            "amount0": self.token0Balance,
+            "amount1": self.token1Balance,
             "token0_address": self.token0,
             "token1_address": self.token1,
             "tick_lower": tick_low,
@@ -1302,7 +1302,6 @@ class Web3Manager:
             "token1_address": self.token1,
             "is_open": True,
         }
-        history.update(range_amounts)
 
         # TODO: Approve tokens
         # self.uniswap.approve()
@@ -1343,18 +1342,16 @@ class Web3Manager:
                 raise Exception(e_msg)
             self.uniswap.wrap_eth(amount=amount)
 
-        # Recalculate range and amounts
-        wallet_amounts = self.uniswap.get_token_balances()
-        wallet_amount0 = wallet_amounts["token0_balance"]
-        wallet_amount1 = wallet_amounts["token1_balance"]
+        # Recalculate range and amounts and update history
         range_amounts = self.calculate_position_range_and_amounts()
+        history.update(range_amounts)
 
         # open position at uniswap
         rc_mint = self.uniswap.mint_liquidity(
             tick_lower=range_amounts["tick_lower"],
             tick_upper=range_amounts["tick_upper"],
-            amount_0=wallet_amount0,  # range_amounts["amount0"],
-            amount_1=wallet_amount1,  # range_amounts["amount1"],
+            amount_0=range_amounts["amount0"],
+            amount_1=range_amounts["amount1"],
             recipient=self.wallet_address,
         )
 
@@ -1364,11 +1361,10 @@ class Web3Manager:
         )
         mint_tx_hash = rc_mint.transactionHash.hex()  # type: ignore
 
-        # Get tokenId
+        # Get tokenId and amounts from the receipt objects
         tokenId = self.uniswap.parseTxReceiptForTokenId(rc=rc_mint)
         mint_amounts = self.uniswap.parseTxReceiptForAmounts(rc=rc_mint)
-
-        # Save position in position_history
+        history.update(mint_amounts)
         history.update(
             {
                 "tokenID": tokenId,
@@ -1389,11 +1385,11 @@ class Web3Manager:
             message=f"New position opened\n"
             f"TokenId: {tokenId}\n"
             f"Tokens: {self.token0_symbol}/{self.token1_symbol}\n"
-            f"Amount0: {mint_amounts['amount0']/10**self.decimal0} {self.token0_symbol}\n"
-            f"Amount1: {mint_amounts['amount1']/10**self.decimal1} {self.token1_symbol}\n"
+            f"Amount0: {mint_amounts['mint_rc_amount0']/10**self.decimal0} {self.token0_symbol}\n"
+            f"Amount1: {mint_amounts['mint_rc_amount1']/10**self.decimal1} {self.token1_symbol}\n"
             f"Price: {range_amounts['price_current']}\n"
             f"Range: {range_amounts['range_lower']} - {range_amounts['range_upper']}\n"
-            f"Ticks: {mint_amounts['tick_lower']} - {mint_amounts['tick_upper']}\n"
+            f"Ticks: {mint_amounts['mint_rc_tick_lower']} - {mint_amounts['mint_rc_tick_upper']}\n"
             f"https://app.uniswap.org/#/pool/{tokenId}"
         )
 

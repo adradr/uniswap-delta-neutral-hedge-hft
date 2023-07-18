@@ -194,11 +194,11 @@ class Uniswap:
         """
         logs_transfer = self.pool.events.Mint().processReceipt(rc)
         return {
-            "amount0": logs_transfer[0]["args"]["amount0"],
-            "amount1": logs_transfer[0]["args"]["amount1"],
-            "amount": logs_transfer[0]["args"]["amount"],
-            "tick_lower": logs_transfer[0]["args"]["tickLower"],
-            "tick_upper": logs_transfer[0]["args"]["tickUpper"],
+            "mint_rc_amount0": logs_transfer[0]["args"]["amount0"],
+            "mint_rc_amount1": logs_transfer[0]["args"]["amount1"],
+            "mint_rc_amount": logs_transfer[0]["args"]["amount"],
+            "mint_rc_tick_lower": logs_transfer[0]["args"]["tickLower"],
+            "mint_rc_tick_upper": logs_transfer[0]["args"]["tickUpper"],
         }
 
     def check_allowance(self):
