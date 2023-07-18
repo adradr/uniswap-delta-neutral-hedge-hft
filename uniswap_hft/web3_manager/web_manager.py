@@ -1317,6 +1317,7 @@ class Web3Manager:
             "token1_symbol": self.token1_symbol,
             "token0_address": self.token0,
             "token1_address": self.token1,
+            "is_open": True,
         }
         history.update(range_amounts)
 
