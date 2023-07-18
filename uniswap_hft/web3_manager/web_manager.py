@@ -1266,11 +1266,6 @@ class Web3Manager:
             b. Open position
 
         """
-        # Check if lock
-        if self.lock:
-            self.logger.info("Lock is active, skipping update position")
-            return
-
         # Check if position is open
         if not self.position_history[-1]["is_open"]:
             self.logger.info("No open position, opening position")
@@ -1428,9 +1423,6 @@ class Web3Manager:
         if self.background_process:
             self.background_process.terminate()
             self.background_process.join()
-
-        # Disengage lock
-        self.lock = False
 
     @lock
     def close_position(
