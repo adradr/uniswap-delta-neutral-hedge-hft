@@ -1234,23 +1234,14 @@ class Web3Manager:
             # Open position
             self.open_position()
 
-    def open_position(self) -> None:
-        """Open a position at Uniswap V3
-        1. Updates the balances of the wallet for token0 and token1
-        2. Swaps the tokens in the wallet for the token with the least amount
-        3. Opens a position at Uniswap V3
-        4. Saves the position in the position_history list
-
-        Returns:
-            web3.types.TxReceipt: Transaction receipt of the open position
-        """
+    def calculate_position_range_and_amounts(self, target_amount: float) -> typing.Dict:
         # Get current price
         current_price = self.get_current_price()
         current_tick = self.get_current_tick()
         # Initialize tokenManager
         self.tokenManager = uniswap_hft.uniswap_math.TokenManagement.TokenManager(
             range_pct=self.range_percentage,
-            target_amount=self.token0_capital,
+            target_amount=target_amount,
             token0_decimal=min(self.decimal0, self.decimal1),
             token1_decimal=max(self.decimal0, self.decimal1),
             current_price=self.uniswap.get_current_price(),
@@ -1278,26 +1269,45 @@ class Web3Manager:
         self.amount0 = int(self.amount0 * 10**self.decimal0)
         self.amount1 = int(self.amount1 * 10**self.decimal1)
 
-        # Get token amounts
+        # Get existing token amounts
         self.token0Balance, self.token1Balance = self.update_wallet_balance()
 
-        history = {
+        return {
             "amount0": self.amount0,
             "amount1": self.amount1,
-            "token0_symbol": self.token0_symbol,
-            "token1_symbol": self.token1_symbol,
             "token0_address": self.token0,
             "token1_address": self.token1,
             "tick_lower": tick_low,
             "tick_upper": tick_high,
             "tick_current": current_tick,
-            "tick_initial": current_tick,
+            "price_current": current_price,
             "range_lower": range_low,
             "range_upper": range_high,
-            "price_current": current_price,
-            "price_initial": current_price,
-            "last_update": self.get_current_time_str(),
         }
+
+    def open_position(self) -> None:
+        """Open a position at Uniswap V3
+        1. Updates the balances of the wallet for token0 and token1
+        2. Swaps the tokens in the wallet for the token with the least amount
+        3. Opens a position at Uniswap V3
+        4. Saves the position in the position_history list
+
+        Returns:
+            web3.types.TxReceipt: Transaction receipt of the open position
+        """
+
+        # Calculate position range and amounts
+        range_amounts = self.calculate_position_range_and_amounts(
+            target_amount=self.token0_capital
+        )
+
+        history = {
+            "token0_symbol": self.token0_symbol,
+            "token1_symbol": self.token1_symbol,
+            "token0_address": self.token0,
+            "token1_address": self.token1,
+        }
+        history.update(range_amounts)
 
         # TODO: Approve tokens
         # self.uniswap.approve()
@@ -1326,24 +1336,38 @@ class Web3Manager:
             self.store_position_history()
             return
 
-        # Wrap the token WETH to ETH if using CEX
+        # Wrap the token WETH to ETH if using CEX,
         if self.cex_credentials:
             if self.token0_symbol == "WETH" or self.token1_symbol == "ETH":
-                amount = self.amount0
+                amount = range_amounts["amount0"]
             elif self.token1_symbol == "WETH" or self.token0_symbol == "ETH":
-                amount = self.amount1
+                amount = range_amounts["amount1"]
             else:
                 e_msg = "Unexpected error in wrappping ETH"
                 self.send_telegram_message(message=e_msg)
                 raise Exception(e_msg)
             self.uniswap.wrap_eth(amount=amount)
 
+        # Recalculate amounts if CEX
+        if self.cex_credentials:
+            withdrawn_amount = self.uniswap.get_token_balances()
+            withdrawn_amount0 = withdrawn_amount[self.token0_symbol]
+            withdrawn_amount1 = withdrawn_amount[self.token1_symbol]
+            total_capital = (
+                withdrawn_amount0 + withdrawn_amount1 * self.get_current_price()
+                if self.token0_symbol == "ETH" or self.token0_symbol == "WETH"
+                else withdrawn_amount1 + withdrawn_amount0 * self.get_current_price()
+            )
+            range_amounts = self.calculate_position_range_and_amounts(
+                target_amount=total_capital
+            )
+
         # open position at uniswap
         rc_mint = self.uniswap.mint_liquidity(
-            tick_lower=tick_low,
-            tick_upper=tick_high,
-            amount_0=self.amount0,
-            amount_1=self.amount1,
+            tick_lower=range_amounts["tick_lower"],
+            tick_upper=range_amounts["tick_upper"],
+            amount_0=range_amounts["amount0"],
+            amount_1=range_amounts["amount1"],
             recipient=self.wallet_address,
         )
 
@@ -1362,10 +1386,6 @@ class Web3Manager:
                 "tokenID": tokenId,
                 "tx_mint": mint_tx_hash,
                 "tx_swap": swap_tx_hash,
-                "tx_decrease": None,
-                "tx_collect": None,
-                "tx_burn": None,
-                "is_open": True,
                 "last_update": self.get_current_time_str(),
                 "message": "success",
                 "token_url": f"https://app.uniswap.org/#/pool/{tokenId}",
@@ -1383,8 +1403,8 @@ class Web3Manager:
             f"Tokens: {self.token0_symbol}/{self.token1_symbol}\n"
             f"Amount0: {self.amount0/10**self.decimal0} {self.token0_symbol}\n"
             f"Amount1: {self.amount1/10**self.decimal1} {self.token1_symbol}\n"
-            f"Price: {current_price}\n"
-            f"Range: {range_low} - {range_high}\n"
+            f"Price: {range_amounts['price_current']}\n"
+            f"Range: {range_amounts['range_lower']} - {range_amounts['range_upper']}\n"
             f"https://app.uniswap.org/#/pool/{tokenId}"
         )
 
