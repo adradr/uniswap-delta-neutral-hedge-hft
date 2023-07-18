@@ -297,7 +297,7 @@ class Web3Manager:
 
     def get_current_tick(self) -> int:
         """Returns the current tick of the pool"""
-        return self.uniswap.pool.functions.slot0().call()[1]
+        return self.uniswap.get_current_tick()
 
     def get_current_time_str(self) -> str:
         """Returns the current time as a string"""
@@ -1243,7 +1243,9 @@ class Web3Manager:
             # Open position
             self.open_position()
 
-    def calculate_position_range_and_amounts(self, target_amount: float) -> typing.Dict:
+    def calculate_position_range_and_amounts(
+        self, target_amount: float = 1
+    ) -> typing.Dict:
         # Get current price
         current_price = self.get_current_price()
         current_tick = self.get_current_tick()
@@ -1357,34 +1359,18 @@ class Web3Manager:
                 raise Exception(e_msg)
             self.uniswap.wrap_eth(amount=amount)
 
-        # Recalculate amounts if CEX
-        if self.cex_credentials:
-            withdrawn_amount = self.uniswap.get_token_balances()
-            withdrawn_amount0 = withdrawn_amount["token0_balance"] / 10**self.decimal0
-            withdrawn_amount1 = withdrawn_amount["token1_balance"] / 10**self.decimal1
-            if self.token0_symbol == "ETH" or self.token0_symbol == "WETH":
-                total_capital = (
-                    withdrawn_amount0 * self.get_current_price() + withdrawn_amount1
-                )
-            elif self.token1_symbol == "ETH" or self.token1_symbol == "WETH":
-                total_capital = (
-                    withdrawn_amount1 * self.get_current_price() + withdrawn_amount0
-                )
-            else:
-                e_msg = "Unexpected error in calculating total capital"
-                self.send_telegram_message(message=e_msg)
-                raise Exception(e_msg)
-
-            range_amounts = self.calculate_position_range_and_amounts(
-                target_amount=total_capital
-            )
+        # Recalculate range and amounts
+        wallet_amounts = self.uniswap.get_token_balances()
+        wallet_amount0 = wallet_amounts["token0_balance"] / 10**self.decimal0
+        wallet_amount1 = wallet_amounts["token1_balance"] / 10**self.decimal1
+        range_amounts = self.calculate_position_range_and_amounts()
 
         # open position at uniswap
         rc_mint = self.uniswap.mint_liquidity(
             tick_lower=range_amounts["tick_lower"],
             tick_upper=range_amounts["tick_upper"],
-            amount_0=range_amounts["amount0"],
-            amount_1=range_amounts["amount1"],
+            amount_0=wallet_amount0,  # range_amounts["amount0"],
+            amount_1=wallet_amount1,  # range_amounts["amount1"],
             recipient=self.wallet_address,
         )
 

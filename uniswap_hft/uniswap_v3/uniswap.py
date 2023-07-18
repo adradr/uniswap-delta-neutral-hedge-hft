@@ -7,8 +7,12 @@ from web3 import Web3
 from web3.types import TxReceipt
 
 from .constants import MAX_UINT_128, _netid_to_name
-from .util import (_get_eth_simple_cache_middleware, _load_contract,
-                   _str_to_addr, nearest_tick)
+from .util import (
+    _get_eth_simple_cache_middleware,
+    _load_contract,
+    _str_to_addr,
+    nearest_tick,
+)
 
 
 # Retry decorator
@@ -317,6 +321,10 @@ class Uniswap:
             return price_weth_per_usdc
         else:
             raise ValueError("Token0 is not ETH or WETH or USDC")
+
+    def get_current_tick(self) -> int:
+        """Returns the current tick of the pool"""
+        return self.pool.functions.slot0().call()[1]
 
     def get_token_balances(self):
         """Gets the current token balance of the wallet for token0 and token1"""
