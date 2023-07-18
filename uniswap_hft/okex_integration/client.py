@@ -23,11 +23,6 @@ class BlockTradingNoQuote(Exception):
     pass
 
 
-# Initialize logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
-
 def only_main_account(func):
     def wrapper(self, *args, **kwargs):
         if self.is_main_account:
@@ -96,6 +91,11 @@ class OKXClient:
         self.is_demo = is_demo
         self.okx_flag = "1" if self.is_demo else "0"
         self.debug = debug
+
+        # Initialize logging
+        self.logger = logging.getLogger(__name__)
+        log_level = logging.DEBUG if debug else logging.INFO
+        self.logger.setLevel(log_level)
 
         self.subaccount_manager = okx.SubAccount.SubAccountAPI(
             api_key=self.api_key,
@@ -493,12 +493,12 @@ class OKXClient:
         if rqf_response["code"] != "0":
             raise BlockTradingError(rqf_response)
 
-        logger.info(f"Created RFQ with ID {rqf_response['data'][0]['rfqId']}")
+        self.logger.info(f"Created RFQ with ID {rqf_response['data'][0]['rfqId']}")
         rfq_id = rqf_response["data"][0]["rfqId"]
-        logger.info(f"Created RFQ with ID {rfq_id}")
-        logger.info(f"Waiting for quotes to come in...")
-        logger.info(f"Maximum spread: {maximum_spread_bps} bps")
-        logger.info(f"Avaialable spreads: ")
+        self.logger.info(f"Created RFQ with ID {rfq_id}")
+        self.logger.info(f"Waiting for quotes to come in...")
+        self.logger.info(f"Maximum spread: {maximum_spread_bps} bps")
+        self.logger.info(f"Avaialable spreads: ")
 
         # Start the timer
         start_time = time.time()
@@ -508,8 +508,8 @@ class OKXClient:
                 rfqId=rfq_id, state="active"
             )
             quotes = quote_response["data"]
-            logger.info(f"Quotes received: {len(quotes)}")
-            logger.info(f"Quotes: {quotes}")
+            self.logger.info(f"Quotes received: {len(quotes)}")
+            self.logger.info(f"Quotes: {quotes}")
             sell_side = [q for q in quotes if q["quoteSide"] == "sell"]
             buy_side = [q for q in quotes if q["quoteSide"] == "buy"]
 
@@ -523,7 +523,7 @@ class OKXClient:
             if len(sell_side) == 0 or len(buy_side) == 0:
                 if time.time() - start_time > 60:
                     e_msg = "No quotes received in 60 seconds"
-                    logger.info(e_msg)
+                    self.logger.info(e_msg)
                     raise BlockTradingNoQuote(e_msg)
                 time.sleep(2)
                 continue
@@ -546,11 +546,11 @@ class OKXClient:
             # Print best available spread
             if len(spread_bps_list) > 0:
                 best_spread = sorted(spread_bps_list, key=lambda x: x[1])[0]
-                logger.info(
+                self.logger.info(
                     f"Best spread: {best_spread[1]} bps, buy at {best_spread[0]}, sell at {best_spread[2]}"
                 )
             else:
-                logger.info(f"No spreads available, waiting...")
+                self.logger.info(f"No spreads available, waiting...")
 
             # Filter and sort the spreads
             filtered_spreads = sorted(
@@ -569,19 +569,19 @@ class OKXClient:
             elif time.time() - start_time > deadline:
                 # TODO: Kill the RFQ
                 msg = "Deadline reached, no acceptable spread available, returning"
-                logger.info(msg)
+                self.logger.info(msg)
                 raise BlockTradingTimeOut(msg)
 
             # Take the best spread
             else:
                 # Log the best spread
-                logger.info(f"{filtered_spreads[0]}")
+                self.logger.info(f"{filtered_spreads[0]}")
                 # Save the quote ID
                 best_spread = filtered_spreads[0]
                 quote_id = best_spread[3]
 
                 # Execute the quote
-                logger.info(f"Executing quote {quote_id}")
+                self.logger.info(f"Executing quote {quote_id}")
                 return self.block_trading_manager.execute_quote(
                     rfqId=rfq_id, quoteId=quote_id, legs=legs
                 )

@@ -39,6 +39,22 @@ class WithdrawTimeout(Exception):
     pass
 
 
+def lock(func):
+    def wrapper(self, *args, **kwargs):
+        if self.lock:
+            print("Function already locked. Returning without executing.")
+            return None
+        else:
+            self.lock = True
+            try:
+                result = func(self, *args, **kwargs)
+            finally:
+                self.lock = False
+            return result
+
+    return wrapper
+
+
 class Web3Manager:
     """Class for managing the web3 connection and the uniswap contract
     1. Init the class with the provider and the uniswap contract
@@ -122,6 +138,7 @@ class Web3Manager:
         self.cex_credentials = cex_credentials
         self.debug = debug
         self.position_history_path = position_history_path
+        self.lock = False
 
         if cex_credentials is not None:
             self.cex_client_main = uniswap_hft.okex_integration.client.OKXClient(
@@ -156,7 +173,7 @@ class Web3Manager:
                 is_demo=cex_credentials["subaccount"]["is_demo"],
             )
 
-        # Retrieve the logger object
+        # Initialize logging
         self.logger = logging.getLogger(__name__)
         log_level = logging.DEBUG if debug else logging.INFO
         self.logger.setLevel(log_level)
@@ -1070,7 +1087,6 @@ class Web3Manager:
         self.send_telegram_message(message=msg)
         self.open_position()
 
-    @pysnooper.snoop()
     def swap_amounts_uniswap(self) -> typing.Union[web3.types.TxReceipt, None]:
         """Swaps the tokens in the wallet for the token with the least amount
 
@@ -1181,51 +1197,6 @@ class Web3Manager:
         else:
             return self.swap_amounts_uniswap()
 
-    def update_position(self):
-        """Updates the position of the wallet in the pool
-        1. Get current price and tick
-        2. Only if tick is higher or lower than range close position
-            a. Close position
-            b. Open position
-
-        """
-        # Check if position is open
-        if not self.position_history[-1]["is_open"]:
-            self.logger.info("No open position, opening position")
-            self.open_position()
-            return
-
-        # Get current price and tick
-        current_price = self.get_current_price()
-        current_tick = self.get_current_tick()
-
-        # Read current tick from Uniswap V3 contract
-
-        # Save current tick and price
-        self.position_history[-1]["tick_current"] = current_tick
-        self.position_history[-1]["price_current"] = current_price
-        self.position_history[-1]["last_update"] = self.get_current_time_str()
-
-        # Save position history
-        self.store_position_history()
-
-        # Only if tick is higher or lower than range close position
-        if (
-            current_tick > self.position_history[-1]["tick_upper"]
-            or current_tick < self.position_history[-1]["tick_lower"]
-        ):
-            # Log close position
-            self.logger.info("Price is outside of range. Closing position")
-            self.logger.info(
-                f"Current tick: {current_tick}. Range: {self.position_history[-1]['tick_lower']} - {self.position_history[-1]['tick_upper']}"
-            )
-
-            # Close position
-            self.close_position()
-
-            # Open position
-            self.open_position()
-
     def calculate_position_range_and_amounts(
         self, target_amount: float = 1
     ) -> typing.Dict:
@@ -1279,6 +1250,58 @@ class Web3Manager:
             "range_upper": range_high,
         }
 
+    @lock
+    def update_position(self):
+        """Updates the position of the wallet in the pool
+        1. Get current price and tick
+        2. Only if tick is higher or lower than range close position
+            a. Close position
+            b. Open position
+
+        """
+        # Check if lock
+        if self.lock:
+            self.logger.info("Lock is active, skipping update position")
+            return
+
+        # Check if position is open
+        if not self.position_history[-1]["is_open"]:
+            self.logger.info("No open position, opening position")
+            self.open_position()
+            return
+
+        # Get current price and tick
+        current_price = self.get_current_price()
+        current_tick = self.get_current_tick()
+
+        # Read current tick from Uniswap V3 contract
+
+        # Save current tick and price
+        self.position_history[-1]["tick_current"] = current_tick
+        self.position_history[-1]["price_current"] = current_price
+        self.position_history[-1]["last_update"] = self.get_current_time_str()
+
+        # Save position history
+        self.store_position_history()
+
+        # Only if tick is higher or lower than range close position
+        if (
+            current_tick > self.position_history[-1]["tick_upper"]
+            or current_tick < self.position_history[-1]["tick_lower"]
+        ):
+            # Log close position
+            self.logger.info("Price is outside of range. Closing position")
+            self.logger.info(
+                f"Current tick: {current_tick}. Range: {self.position_history[-1]['tick_lower']} - {self.position_history[-1]['tick_upper']}"
+            )
+
+            # Close position
+            self.close_position()
+
+            # Open position
+            self.open_position()
+
+    @lock
     def open_position(self) -> None:
         """Open a position at Uniswap V3
         1. Updates the balances of the wallet for token0 and token1
@@ -1398,6 +1421,10 @@ class Web3Manager:
             self.background_process.terminate()
             self.background_process.join()
 
+        # Disengage lock
+        self.lock = False
+
+    @lock
     def close_position(
         self,
     ) -> None:

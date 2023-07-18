@@ -3,9 +3,13 @@ import logging
 import time
 
 from flask import Flask, jsonify, request
-from flask_jwt_extended import (JWTManager, create_access_token,
-                                create_refresh_token, get_jwt_identity,
-                                jwt_required)
+from flask_jwt_extended import (
+    JWTManager,
+    create_access_token,
+    create_refresh_token,
+    get_jwt_identity,
+    jwt_required,
+)
 
 from uniswap_hft.trading_engine import engine
 
@@ -32,10 +36,10 @@ class TradingEngineAPI:
         )
         self.jwt = JWTManager(self.app)
         self.allowed_users_passwords = allowed_users_passwords
-        self.logger = logging.getLogger(__name__)  # Retrieve the logger object
 
-        # Set log level based on debug flag
-        log_level = logging.DEBUG if self.debug else logging.INFO
+        # Initialize logging
+        self.logger = logging.getLogger(__name__)
+        log_level = logging.DEBUG if debug else logging.INFO
         self.logger.setLevel(log_level)
 
         @self.app.route("/login", methods=["POST"])
@@ -97,7 +101,7 @@ class TradingEngineAPI:
 
             # Start the engine
             position_history = self.engine.start()
-            logging.info(f"Started {type(self.engine).__name__}")
+            self.logger.info(f"Started {type(self.engine).__name__}")
             return (
                 jsonify(
                     {
@@ -119,7 +123,7 @@ class TradingEngineAPI:
 
             # Stop the engine
             position_history = self.engine.stop()
-            logging.info(f"Stopped {type(self.engine).__name__}")
+            self.logger.info(f"Stopped {type(self.engine).__name__}")
             return (
                 jsonify(
                     {
@@ -160,7 +164,7 @@ class TradingEngineAPI:
 
             # Update engine
             position_history = self.engine.update_engine()
-            logging.info(f"Updated {type(self.engine).__name__}")
+            self.logger.info(f"Updated {type(self.engine).__name__}")
             return (
                 jsonify(
                     {
@@ -191,7 +195,7 @@ class TradingEngineAPI:
                 )
             # Update params
             self.engine.update_params(params)
-            logging.info(f"Updated params for {type(self.engine).__name__}")
+            self.logger.info(f"Updated params for {type(self.engine).__name__}")
             return (
                 jsonify(
                     {
