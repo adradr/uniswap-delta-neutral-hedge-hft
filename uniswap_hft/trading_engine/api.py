@@ -3,13 +3,9 @@ import logging
 import time
 
 from flask import Flask, jsonify, request
-from flask_jwt_extended import (
-    JWTManager,
-    create_access_token,
-    create_refresh_token,
-    get_jwt_identity,
-    jwt_required,
-)
+from flask_jwt_extended import (JWTManager, create_access_token,
+                                create_refresh_token, get_jwt_identity,
+                                jwt_required)
 
 from uniswap_hft.trading_engine import engine
 

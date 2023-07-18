@@ -6,7 +6,6 @@ import time
 import typing
 
 import eth_typing.evm
-import pysnooper
 import web3.types
 
 import uniswap_hft.okex_integration.client
