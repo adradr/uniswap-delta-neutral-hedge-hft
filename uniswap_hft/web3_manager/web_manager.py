@@ -1360,13 +1360,21 @@ class Web3Manager:
         # Recalculate amounts if CEX
         if self.cex_credentials:
             withdrawn_amount = self.uniswap.get_token_balances()
-            total_capital = (
-                withdrawn_amount["token0_balance"]
-                + withdrawn_amount["token1_balance"] * self.get_current_price()
-                if self.token0_symbol == "ETH" or self.token0_symbol == "WETH"
-                else withdrawn_amount["token1_balance"]
-                + withdrawn_amount["token0_balance"] * self.get_current_price()
-            )
+            withdrawn_amount0 = withdrawn_amount["token0_balance"] / 10**self.decimal0
+            withdrawn_amount1 = withdrawn_amount["token1_balance"] / 10**self.decimal1
+            if self.token0_symbol == "ETH" or self.token0_symbol == "WETH":
+                total_capital = (
+                    withdrawn_amount0 * self.get_current_price() + withdrawn_amount1
+                )
+            elif self.token1_symbol == "ETH" or self.token1_symbol == "WETH":
+                total_capital = (
+                    withdrawn_amount1 * self.get_current_price() + withdrawn_amount0
+                )
+            else:
+                e_msg = "Unexpected error in calculating total capital"
+                self.send_telegram_message(message=e_msg)
+                raise Exception(e_msg)
+
             range_amounts = self.calculate_position_range_and_amounts(
                 target_amount=total_capital
             )
