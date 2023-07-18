@@ -339,11 +339,12 @@ class Web3Manager:
         if self.cex_credentials:
             if self.token0_symbol == "WETH":
                 if unwrap_weth and token0Balance > 0:
-                    # Convert WETH to ETH
+                    self.logger.info(f"Unwrapping {token0Balance} WETH to ETH")
                     self.uniswap.unwrap_weth(amount=token0Balance)
                 token0Balance = self.uniswap.w3.eth.get_balance(self.wallet_address)
             if self.token1_symbol == "WETH":
                 if unwrap_weth and token1Balance > 0:
+                    self.logger.info(f"Unwrapping {token1Balance} WETH to ETH")
                     self.uniswap.unwrap_weth(amount=token1Balance)
                 token1Balance = self.uniswap.w3.eth.get_balance(self.wallet_address)
 
@@ -772,6 +773,7 @@ class Web3Manager:
             watch_amount=amounts_key,
             max_deadline=max_deadline,
         )
+        self.logger.info(f"Withdrawal arrived: {amounts[amounts_key]} {currency}")
 
         return withdraw_response
 
@@ -1236,6 +1238,12 @@ class Web3Manager:
         # Get existing token amounts
         self.token0Balance, self.token1Balance = self.update_wallet_balance()
 
+        # Leave 0.1 ETH for gas
+        if self.token0_symbol == "WETH":
+            self.token0Balance -= self.uniswap.w3.toWei(0.1, "ether")
+        elif self.token1_symbol == "WETH":
+            self.token1Balance -= self.uniswap.w3.toWei(0.1, "ether")
+
         return {
             "amount0": self.token0Balance,
             "amount1": self.token1Balance,
@@ -1362,6 +1370,7 @@ class Web3Manager:
                 e_msg = "Unexpected error in wrappping ETH"
                 self.send_telegram_message(message=e_msg)
                 raise Exception(e_msg)
+            self.logger.info(f"Wrapping {amount} ETH to WETH")
             self.uniswap.wrap_eth(amount=amount)
 
         # Recalculate range and amounts and update history
@@ -1466,6 +1475,7 @@ class Web3Manager:
             weth_amount = weth_amount[
                 "token0_balance" if self.token0_symbol == "WETH" else "token1_balance"
             ]
+            self.logger.info(f"Unwrapping {weth_amount} WETH to ETH")
             self.uniswap.unwrap_weth(amount=weth_amount)
 
         # Burn the token only if burn_on_close is True
