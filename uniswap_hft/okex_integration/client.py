@@ -8,6 +8,7 @@ import okx.BlockTrading
 import okx.Funding
 import okx.MarketData
 import okx.PublicData
+import okx.MarketData
 import okx.SubAccount
 
 
@@ -127,6 +128,14 @@ class OKXClient:
         )
 
         self.public_manager = okx.PublicData.PublicAPI(
+            api_key=self.api_key,
+            api_secret_key=self.api_secret,
+            passphrase=self.passphrase,
+            debug=self.debug,
+            flag=self.okx_flag,
+        )
+
+        self.market_data_manager = okx.MarketData.MarketAPI(
             api_key=self.api_key,
             api_secret_key=self.api_secret,
             passphrase=self.passphrase,
@@ -517,7 +526,7 @@ class OKXClient:
                     e_msg = "No quotes received in 60 seconds"
                     logger.info(e_msg)
                     raise BlockTradingNoQuote(e_msg)
-                time.sleep(1)
+                time.sleep(2)
                 continue
 
             # Filter for best quotes on each side
@@ -556,7 +565,7 @@ class OKXClient:
 
             # Sleep if no spreads are available or deadline reached
             if len(filtered_spreads) == 0 and time.time() - start_time < deadline:
-                time.sleep(1)
+                time.sleep(2)
                 continue
             elif time.time() - start_time > deadline:
                 # TODO: Kill the RFQ
