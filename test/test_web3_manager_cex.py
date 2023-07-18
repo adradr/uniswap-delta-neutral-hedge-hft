@@ -1,12 +1,15 @@
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 import uniswap_hft.okex_integration.client
-from uniswap_hft.web3_manager.web_manager import (DepositFailed,
-                                                  InsufficientFunds,
-                                                  TransferFailed, Web3Manager,
-                                                  WithdrawTimeout)
+from uniswap_hft.web3_manager.web_manager import (
+    DepositFailed,
+    InsufficientFunds,
+    TransferFailed,
+    Web3Manager,
+    WithdrawTimeout,
+)
 
 
 @pytest.fixture
@@ -261,6 +264,7 @@ def test_wait_for_withdrawal_okx_blocktrading_success(web3_manager_cex):
 
 
 def test_swap_amounts_okx_blocktrading_failure_not_enough_funds(web3_manager_cex):
+    web3_manager_cex.update_wallet_balance = MagicMock(return_value=(0, 0))
     web3_manager_cex.get_amounts_okx_blocktrading = MagicMock(
         return_value={
             "existing_amount0": 0,

@@ -325,7 +325,9 @@ class Web3Manager:
         )
         return logs_transfer[0]["args"]["tokenId"]
 
-    def update_wallet_balance(self):
+    def update_wallet_balance(
+        self, unwrap_weth: bool = False
+    ) -> typing.Tuple[int, int]:
         """Updates the balances of the wallet for token0 and token1"""
         token0Balance = self.token0_contract.functions.balanceOf(
             self.wallet_address
@@ -337,8 +339,13 @@ class Web3Manager:
         # If using CEX as source of funds, use ETH balance instead of WETH
         if self.cex_credentials:
             if self.token0_symbol == "WETH":
+                if unwrap_weth and token0Balance > 0:
+                    # Convert WETH to ETH
+                    self.uniswap.unwrap_weth(amount=token0Balance)
                 token0Balance = self.uniswap.w3.eth.get_balance(self.wallet_address)
             if self.token1_symbol == "WETH":
+                if unwrap_weth and token1Balance > 0:
+                    self.uniswap.unwrap_weth(amount=token1Balance)
                 token1Balance = self.uniswap.w3.eth.get_balance(self.wallet_address)
 
         return token0Balance, token1Balance
@@ -859,6 +866,8 @@ class Web3Manager:
             - USDT
         """
         return_values = []
+        # Unwrap WETH if needed
+        self.update_wallet_balance(unwrap_weth=True)
         # Get existing and required token amounts
         amounts = self.get_amounts_okx_blocktrading()
         self.log_amounts_okx_blocktrading(amounts=amounts)
@@ -1351,12 +1360,12 @@ class Web3Manager:
         # Recalculate amounts if CEX
         if self.cex_credentials:
             withdrawn_amount = self.uniswap.get_token_balances()
-            withdrawn_amount0 = withdrawn_amount[self.token0_symbol]
-            withdrawn_amount1 = withdrawn_amount[self.token1_symbol]
             total_capital = (
-                withdrawn_amount0 + withdrawn_amount1 * self.get_current_price()
+                withdrawn_amount["token0_balance"]
+                + withdrawn_amount["token1_balance"] * self.get_current_price()
                 if self.token0_symbol == "ETH" or self.token0_symbol == "WETH"
-                else withdrawn_amount1 + withdrawn_amount0 * self.get_current_price()
+                else withdrawn_amount["token1_balance"]
+                + withdrawn_amount["token0_balance"] * self.get_current_price()
             )
             range_amounts = self.calculate_position_range_and_amounts(
                 target_amount=total_capital
