@@ -1361,8 +1361,8 @@ class Web3Manager:
 
         # Recalculate range and amounts
         wallet_amounts = self.uniswap.get_token_balances()
-        wallet_amount0 = wallet_amounts["token0_balance"] / 10**self.decimal0
-        wallet_amount1 = wallet_amounts["token1_balance"] / 10**self.decimal1
+        wallet_amount0 = wallet_amounts["token0_balance"]
+        wallet_amount1 = wallet_amounts["token1_balance"]
         range_amounts = self.calculate_position_range_and_amounts()
 
         # open position at uniswap
