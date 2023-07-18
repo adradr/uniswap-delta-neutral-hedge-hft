@@ -1,14 +1,18 @@
 import logging
 import time
 from functools import wraps
-from typing import Any, Callable, Union
-
+from typing import Any, Callable, Union, Dict
+import web3.types
 from web3 import Web3
 from web3.types import TxReceipt
 
 from .constants import MAX_UINT_128, _netid_to_name
-from .util import (_get_eth_simple_cache_middleware, _load_contract,
-                   _str_to_addr, nearest_tick)
+from .util import (
+    _get_eth_simple_cache_middleware,
+    _load_contract,
+    _str_to_addr,
+    nearest_tick,
+)
 
 
 # Retry decorator
@@ -161,6 +165,41 @@ class Uniswap:
             self.weth = _load_contract(
                 self.w3, abi_name="uniswap-v3/weth", address=self.weth_address
             )
+
+    def parseTxReceiptForTokenId(self, rc: web3.types.TxReceipt) -> int:
+        """Parses a tx receipt for the tokenId
+
+        Args:
+            rc (web3.types.TxReceipt): web3.types.TxReceipt object instance returned by open_position function
+
+        Returns:
+            int: tokenId of Uniswap V3 NFT
+        """
+        # logs_mint = self.pool_contract.events.Mint().processReceipt(rc)
+        # sender = logs_mint[0]["args"]["sender"]
+
+        logs_transfer = (
+            self.nonFungiblePositionManager.events.Transfer().processReceipt(rc)
+        )
+        return logs_transfer[0]["args"]["tokenId"]
+
+    def parseTxReceiptForAmounts(self, rc: web3.types.TxReceipt) -> Dict:
+        """Parses a tx receipt for the amounts
+
+        Args:
+            rc (web3.types.TxReceipt): web3.types.TxReceipt object instance returned by open_position function
+
+        Returns:
+            int: tokenId of Uniswap V3 NFT
+        """
+        logs_transfer = self.pool.events.Mint().processReceipt(rc)
+        return {
+            "amount0": logs_transfer[0]["args"]["amount0"],
+            "amount1": logs_transfer[0]["args"]["amount1"],
+            "amount": logs_transfer[0]["args"]["amount"],
+            "tick_lower": logs_transfer[0]["args"]["tickLower"],
+            "tick_upper": logs_transfer[0]["args"]["tickUpper"],
+        }
 
     def check_allowance(self):
         """Check allowance for trading on the exchange."""

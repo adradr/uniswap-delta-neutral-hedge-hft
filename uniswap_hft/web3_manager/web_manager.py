@@ -308,23 +308,6 @@ class Web3Manager:
         )
         return last_update_str
 
-    def parseTxReceiptForTokenId(self, rc: web3.types.TxReceipt) -> int:
-        """Parses a tx receipt for the tokenId
-
-        Args:
-            rc (web3.types.TxReceipt): web3.types.TxReceipt object instance returned by open_position function
-
-        Returns:
-            int: tokenId of Uniswap V3 NFT
-        """
-        # logs_mint = self.pool_contract.events.Mint().processReceipt(rc)
-        # sender = logs_mint[0]["args"]["sender"]
-
-        logs_transfer = (
-            self.uniswap.nonFungiblePositionManager.events.Transfer().processReceipt(rc)
-        )
-        return logs_transfer[0]["args"]["tokenId"]
-
     def update_wallet_balance(
         self, unwrap_weth: bool = False
     ) -> typing.Tuple[int, int]:
@@ -1382,7 +1365,8 @@ class Web3Manager:
         mint_tx_hash = rc_mint.transactionHash.hex()  # type: ignore
 
         # Get tokenId
-        tokenId = self.parseTxReceiptForTokenId(rc=rc_mint)
+        tokenId = self.uniswap.parseTxReceiptForTokenId(rc=rc_mint)
+        mint_amounts = self.uniswap.parseTxReceiptForAmounts(rc=rc_mint)
 
         # Save position in position_history
         history.update(
@@ -1405,10 +1389,11 @@ class Web3Manager:
             message=f"New position opened\n"
             f"TokenId: {tokenId}\n"
             f"Tokens: {self.token0_symbol}/{self.token1_symbol}\n"
-            f"Amount0: {self.amount0/10**self.decimal0} {self.token0_symbol}\n"
-            f"Amount1: {self.amount1/10**self.decimal1} {self.token1_symbol}\n"
+            f"Amount0: {mint_amounts['amount0']/10**self.decimal0} {self.token0_symbol}\n"
+            f"Amount1: {mint_amounts['amount1']/10**self.decimal1} {self.token1_symbol}\n"
             f"Price: {range_amounts['price_current']}\n"
             f"Range: {range_amounts['range_lower']} - {range_amounts['range_upper']}\n"
+            f"Ticks: {mint_amounts['tick_lower']} - {mint_amounts['tick_upper']}\n"
             f"https://app.uniswap.org/#/pool/{tokenId}"
         )
 
