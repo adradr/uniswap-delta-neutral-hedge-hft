@@ -68,7 +68,7 @@ class Web3Manager:
         wallet_address: eth_typing.evm.ChecksumAddress,
         wallet_private_key: str,
         range_percentage: int,
-        token0_capital: int,
+        usd_capital: int,
         provider: str,
         burn_on_close: bool = False,
         debug: bool = False,
@@ -84,7 +84,7 @@ class Web3Manager:
             wallet_address (eth_typing.evm.ChecksumAddress): The address of the wallet where the funds are located at
             wallet_private_key (str): The private key of the wallet
             range_percentage (int): How wide the range should be in percentage (e.g. 1 for 1%)
-            token0_capital (int): How much of the funds should be used to provide liquidity for token0 (e.g. 1000 for 1000USDC). Note: it will be ~doubled for the total position size
+            usd_capital (int): How much of the funds should be used to provide liquidity for token0 (e.g. 1000 for 1000USDC). Note: it will be ~doubled for the total position size
             provider (str): The provider of the blockchain, e.g. infura
             burn_on_close (bool, optional): Whether to burn the liquidity tokens on close. Defaults to False.
             debug (bool, optional): Whether to enable debug logging. Defaults to False.
@@ -131,7 +131,7 @@ class Web3Manager:
         self.wallet_address = wallet_address
         self.wallet_private_key = wallet_private_key
         self.range_percentage = range_percentage
-        self.token0_capital = token0_capital
+        self.usd_capital = usd_capital
         self.provider = provider
         self.burn_on_close = burn_on_close
         self.cex_credentials = cex_credentials
@@ -242,7 +242,7 @@ class Web3Manager:
         # Initialize tokenManager
         self.tokenManager = uniswap_hft.uniswap_math.TokenManagement.TokenManager(
             range_pct=self.range_percentage,
-            target_amount=self.token0_capital,
+            target_amount=self.usd_capital,
             token0_decimal=min(self.decimal0, self.decimal1),
             token1_decimal=max(self.decimal0, self.decimal1),
             current_price=self.uniswap.get_current_price(),
@@ -257,7 +257,7 @@ class Web3Manager:
         self.logger.info(f"Swap pool fee: {self.pool_fee}")
         self.logger.info(f"Wallet address: {self.wallet_address}")
         self.logger.info(f"Range percentage: {self.range_percentage}")
-        self.logger.info(f"Token0 capital: {self.token0_capital}")
+        self.logger.info(f"Token0 capital: {self.usd_capital}")
         self.logger.info(f"Provider: {self.provider}")
         self.logger.info(f"Decimal0: {self.decimal0}")
         self.logger.info(f"Decimal1: {self.decimal1}")
@@ -341,12 +341,16 @@ class Web3Manager:
                 if unwrap_weth and token0Balance > 0:
                     self.logger.info(f"Unwrapping {token0Balance} WETH to ETH")
                     self.uniswap.unwrap_weth(amount=token0Balance)
-                token0Balance = self.uniswap.w3.eth.get_balance(self.wallet_address)
+                    token0Balance = self.uniswap.w3.eth.get_balance(self.wallet_address)
+                if token0Balance == 0:
+                    token0Balance = self.uniswap.w3.eth.get_balance(self.wallet_address)
             if self.token1_symbol == "WETH":
                 if unwrap_weth and token1Balance > 0:
                     self.logger.info(f"Unwrapping {token1Balance} WETH to ETH")
                     self.uniswap.unwrap_weth(amount=token1Balance)
-                token1Balance = self.uniswap.w3.eth.get_balance(self.wallet_address)
+                    token1Balance = self.uniswap.w3.eth.get_balance(self.wallet_address)
+                if token1Balance == 0:
+                    token1Balance = self.uniswap.w3.eth.get_balance(self.wallet_address)
 
         return token0Balance, token1Balance
 
@@ -749,7 +753,7 @@ class Web3Manager:
             "cex_existing_amount1_decimal",
         ],
         currency: str,
-        max_deadline: int = 300,
+        max_deadline: int = 3 * 60 * 60,  # 3 hours
     ) -> dict:
         # Withdraw funds from OKX to Metamask
         self.logger.info(
@@ -817,7 +821,7 @@ class Web3Manager:
     def block_trade_okx_blocktrading(
         self,
         amounts: dict,
-        direction: str,
+        direction: typing.Literal["buy", "sell"],
         amounts_key: str,
     ) -> dict:
         try:
@@ -825,13 +829,25 @@ class Web3Manager:
                 amounts["cex_symbol"], direction, amounts[amounts_key]
             )
             self.logger.info(block_trade_response)
+            return {"token_swap": block_trade_response}
 
-            # Check if block trade was successful
-            if block_trade_response["code"] != "0":
-                e_msg = f"Blocktrade failed({amounts_key}): {block_trade_response}"
-                self.logger.error(e_msg)
-                self.send_telegram_message(message=e_msg)
-                raise BlocktradeFailed(e_msg)
+        except (
+            uniswap_hft.okex_integration.client.BlockTradingMinimumNotionalSize
+        ) as e_msg:
+            # Account for larger fees
+            market_order_amount = amounts[amounts_key] * 1.01
+
+            self.logger.error(
+                "Blocktrade failed: minimum notional value is $10000"
+                f"Spot trading {amounts['cex_symbol']} of {market_order_amount} amount"
+            )
+            block_trade_response = self.cex_client_subaccount.make_market_order(
+                symbol=amounts["cex_symbol"],
+                side=direction,
+                amount=market_order_amount,
+            )
+
+            self.logger.info(block_trade_response)
 
             return {"token_swap": block_trade_response}
 
@@ -946,7 +962,7 @@ class Web3Manager:
             self.send_telegram_message(message=e_msg)
             raise InsufficientFunds(e_msg)
 
-        # Update CEX amounts after deposit
+        # Update CEX amounts after blocktrade / noswap
         amounts = self.get_amounts_okx_blocktrading()
         self.log_amounts_okx_blocktrading(amounts=amounts)
         withdraw_amount0, withdraw_amount1 = self.check_required_and_existing_amounts(
@@ -972,51 +988,69 @@ class Web3Manager:
         # Fetch pre-withdraw balances and withdraw funds to Metamask
         wallet_amount0, wallet_amount1 = self.update_wallet_balance()
 
-        try:
-            return_values.append(
-                self.withdraw_amounts_okx_blocktrading(
-                    wallet_amount=wallet_amount0,
-                    amounts=amounts,
-                    amounts_key=withdraw_amount0,
-                    currency=self.token0_symbol_cex,
-                )
+        return_values.append(
+            self.withdraw_amounts_okx_blocktrading(
+                wallet_amount=wallet_amount0,
+                amounts=amounts,
+                amounts_key=withdraw_amount0,
+                currency=self.token0_symbol_cex,
             )
+        )
 
-            return_values.append(
-                self.withdraw_amounts_okx_blocktrading(
-                    wallet_amount=wallet_amount1,
-                    amounts=amounts,
-                    amounts_key=withdraw_amount1,
-                    currency=self.token1_symbol_cex,
-                )
+        return_values.append(
+            self.withdraw_amounts_okx_blocktrading(
+                wallet_amount=wallet_amount1,
+                amounts=amounts,
+                amounts_key=withdraw_amount1,
+                currency=self.token1_symbol_cex,
             )
+        )
 
-        except WithdrawTimeout as e:
-            self.logger.error(
-                "Withdraw timeout, initiating restart of position opening"
-            )
-            # Start the background process for checking funds arrival
-            wallet_amount = (
-                wallet_amount0
-                if "required_amount0_decimal" in e.args[0]
-                else wallet_amount1
-            )
-            watch_amount = (
-                "required_amount0_decimal"
-                if "required_amount0_decimal" in e.args[0]
-                else "required_amount1_decimal"
-            )
-            self.background_process = multiprocessing.Process(
-                target=self.handle_wait_for_withdrawal_okx_blocktrading_exception,
-                args=(
-                    wallet_amount,
-                    watch_amount,
-                    7200,
-                    60,
-                ),
-            )
-            self.background_process.start()
-            return_values.append(e.args[0])
+        # try:
+        #     return_values.append(
+        #         self.withdraw_amounts_okx_blocktrading(
+        #             wallet_amount=wallet_amount0,
+        #             amounts=amounts,
+        #             amounts_key=withdraw_amount0,
+        #             currency=self.token0_symbol_cex,
+        #         )
+        #     )
+
+        #     return_values.append(
+        #         self.withdraw_amounts_okx_blocktrading(
+        #             wallet_amount=wallet_amount1,
+        #             amounts=amounts,
+        #             amounts_key=withdraw_amount1,
+        #             currency=self.token1_symbol_cex,
+        #         )
+        #     )
+
+        # except WithdrawTimeout as e:
+        #     self.logger.error(
+        #         "Withdraw timeout, initiating restart of position opening"
+        #     )
+        #     # Start the background process for checking funds arrival
+        #     wallet_amount = (
+        #         wallet_amount0
+        #         if "required_amount0_decimal" in e.args[0]
+        #         else wallet_amount1
+        #     )
+        #     watch_amount = (
+        #         "required_amount0_decimal"
+        #         if "required_amount0_decimal" in e.args[0]
+        #         else "required_amount1_decimal"
+        #     )
+        #     self.background_process = multiprocessing.Process(
+        #         target=self.handle_wait_for_withdrawal_okx_blocktrading_exception,
+        #         args=(
+        #             wallet_amount,
+        #             watch_amount,
+        #             7200,
+        #             60,
+        #         ),
+        #     )
+        #     self.background_process.start()
+        #     return_values.append(e.args[0])
 
         return return_values
 
@@ -1199,7 +1233,7 @@ class Web3Manager:
             return self.swap_amounts_uniswap()
 
     def calculate_position_range_and_amounts(
-        self, target_amount: float = 1
+        self,
     ) -> typing.Dict:
         # Get current price
         current_price = self.get_current_price()
@@ -1207,7 +1241,7 @@ class Web3Manager:
         # Initialize tokenManager
         self.tokenManager = uniswap_hft.uniswap_math.TokenManagement.TokenManager(
             range_pct=self.range_percentage,
-            target_amount=target_amount,
+            target_amount=self.usd_capital,
             token0_decimal=min(self.decimal0, self.decimal1),
             token1_decimal=max(self.decimal0, self.decimal1),
             current_price=self.uniswap.get_current_price(),
@@ -1304,7 +1338,7 @@ class Web3Manager:
             self.open_position()
 
     @lock
-    def open_position(self) -> None:
+    def open_position(self):
         """Open a position at Uniswap V3
         1. Updates the balances of the wallet for token0 and token1
         2. Swaps the tokens in the wallet for the token with the least amount
@@ -1316,9 +1350,7 @@ class Web3Manager:
         """
 
         # Calculate position range and amounts
-        range_amounts = self.calculate_position_range_and_amounts(
-            target_amount=self.token0_capital
-        )
+        range_amounts = self.calculate_position_range_and_amounts()
 
         history = {
             "token0_symbol": self.token0_symbol,
@@ -1333,30 +1365,10 @@ class Web3Manager:
 
         # Swap tokens
         swap_rc = self.swap_amounts()
-        # If swap_rc is a list and Withdrawal failed: deadline exceeded is in the list
-        if (
-            isinstance(swap_rc, list)
-            and "Withdrawal failed: deadline exceeded" in swap_rc
-        ):
-            # Save position in position_history
-            history.update(
-                {
-                    "tokenID": None,
-                    "tx_mint": None,
-                    "tx_swap": None,
-                    "tx_decrease": None,
-                    "tx_collect": None,
-                    "tx_burn": None,
-                    "is_open": False,
-                    "message": "Withdrawal failed: deadline exceeded",
-                }
-            )
-            self.position_history.append(history)
-            self.store_position_history()
-            return
 
         # Wrap the token WETH to ETH if using CEX,
         if self.cex_credentials:
+            range_amounts = self.calculate_position_range_and_amounts()
             if self.token0_symbol == "WETH" or self.token1_symbol == "ETH":
                 amount = range_amounts["amount0"]
             elif self.token1_symbol == "WETH" or self.token0_symbol == "ETH":
@@ -1367,6 +1379,7 @@ class Web3Manager:
                 raise Exception(e_msg)
             self.logger.info(f"Wrapping {amount} ETH to WETH")
             self.uniswap.wrap_eth(amount=amount)
+            self.logger.info(f"Wrapped {amount} ETH to WETH")
 
         # Recalculate range and amounts and update history
         range_amounts = self.calculate_position_range_and_amounts()
@@ -1423,6 +1436,8 @@ class Web3Manager:
         if self.background_process:
             self.background_process.terminate()
             self.background_process.join()
+
+        return True
 
     @lock
     def close_position(

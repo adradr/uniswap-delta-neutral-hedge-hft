@@ -3,9 +3,13 @@ import logging
 import time
 
 from flask import Flask, jsonify, request
-from flask_jwt_extended import (JWTManager, create_access_token,
-                                create_refresh_token, get_jwt_identity,
-                                jwt_required)
+from flask_jwt_extended import (
+    JWTManager,
+    create_access_token,
+    create_refresh_token,
+    get_jwt_identity,
+    jwt_required,
+)
 
 from uniswap_hft.trading_engine import engine
 
@@ -96,19 +100,32 @@ class TradingEngineAPI:
                 )
 
             # Start the engine
-            position_history = self.engine.start()
-            self.logger.info(f"Started {type(self.engine).__name__}")
-            return (
-                jsonify(
-                    {
-                        "status": "success",
-                        "message": f"Started {type(self.engine).__name__}",
-                        "engine": "running" if self.engine.running else "stopped",
-                        "stats": position_history,
-                    }
-                ),
-                200,
-            )
+            try:
+                position_history = self.engine.start()
+                self.logger.info(f"Started {type(self.engine).__name__}")
+                return (
+                    jsonify(
+                        {
+                            "status": "success",
+                            "message": f"Started {type(self.engine).__name__}",
+                            "engine": "running" if self.engine.running else "stopped",
+                            "stats": position_history,
+                        }
+                    ),
+                    200,
+                )
+            except Exception as e:
+                self.logger.error(e)
+                return (
+                    jsonify(
+                        {
+                            "status": "error",
+                            "message": f"Error starting {type(self.engine).__name__}: {e}",
+                            "engine": "running" if self.engine.running else "stopped",
+                        }
+                    ),
+                    500,
+                )
 
         @self.app.route("/stop", methods=["GET"])
         @jwt_required()
@@ -118,19 +135,32 @@ class TradingEngineAPI:
                 return self.engine_not_running()
 
             # Stop the engine
-            position_history = self.engine.stop()
-            self.logger.info(f"Stopped {type(self.engine).__name__}")
-            return (
-                jsonify(
-                    {
-                        "status": "success",
-                        "message": f"Stopped {type(self.engine).__name__}",
-                        "engine": "running" if self.engine.running else "stopped",
-                        "stats": position_history,
-                    }
-                ),
-                200,
-            )
+            try:
+                position_history = self.engine.stop()
+                self.logger.info(f"Stopped {type(self.engine).__name__}")
+                return (
+                    jsonify(
+                        {
+                            "status": "success",
+                            "message": f"Stopped {type(self.engine).__name__}",
+                            "engine": "running" if self.engine.running else "stopped",
+                            "stats": position_history,
+                        }
+                    ),
+                    200,
+                )
+            except Exception as e:
+                self.logger.error(e)
+                return (
+                    jsonify(
+                        {
+                            "status": "error",
+                            "message": f"Error stopping {type(self.engine).__name__}: {e}",
+                            "engine": "running" if self.engine.running else "stopped",
+                        }
+                    ),
+                    500,
+                )
 
         @self.app.route("/stats", methods=["GET"])
         @jwt_required()
@@ -159,19 +189,32 @@ class TradingEngineAPI:
                 return self.engine_not_running()
 
             # Update engine
-            position_history = self.engine.update_engine()
-            self.logger.info(f"Updated {type(self.engine).__name__}")
-            return (
-                jsonify(
-                    {
-                        "status": "success",
-                        "message": f"Updated {type(self.engine).__name__}",
-                        "engine": "running" if self.engine.running else "stopped",
-                        "stats": position_history,
-                    }
-                ),
-                200,
-            )
+            try:
+                position_history = self.engine.update_engine()
+                self.logger.info(f"Updated {type(self.engine).__name__}")
+                return (
+                    jsonify(
+                        {
+                            "status": "success",
+                            "message": f"Updated {type(self.engine).__name__}",
+                            "engine": "running" if self.engine.running else "stopped",
+                            "stats": position_history,
+                        }
+                    ),
+                    200,
+                )
+            except Exception as e:
+                self.logger.error(e)
+                return (
+                    jsonify(
+                        {
+                            "status": "error",
+                            "message": f"Error updating {type(self.engine).__name__}: {e}",
+                            "engine": "running" if self.engine.running else "stopped",
+                        }
+                    ),
+                    500,
+                )
 
         @self.app.route("/update-params", methods=["POST"])
         @jwt_required()

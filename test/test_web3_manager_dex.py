@@ -14,7 +14,7 @@ def web3_manager_dex():
         wallet_address="0x0000000000000000000000000000000000000001",
         wallet_private_key="0x0000000000000000000000000000000000000002",
         range_percentage=10,
-        token0_capital=1000,
+        usd_capital=1000,
         provider="https://polygon-rpc.com/",
         debug=True,
     )

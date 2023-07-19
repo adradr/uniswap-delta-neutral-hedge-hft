@@ -113,10 +113,10 @@ parser.add_argument(
 )
 
 parser.add_argument(
-    "--token0-capital",
+    "--usd-capital",
     type=int,
     help="How much of the funds should be used to provide liquidity for token0 (e.g. 1000 for 1000USDC). Note: it will be ~doubled for the total position size",
-    default=os.getenv("TOKEN0_CAPITAL"),
+    default=os.getenv("USD_CAPITAL"),
 )
 
 parser.add_argument(
@@ -317,11 +317,11 @@ trading_engine = engine.TradingEngine(
     wallet_address=args.wallet_address,
     wallet_private_key=args.wallet_private_key,
     range_percentage=args.range_percentage,
-    token0_capital=args.token0_capital,
+    usd_capital=args.usd_capital,
     provider=args.provider,
     burn_on_close=args.burn_on_close,
     cex_credentials=args.cex_credentials,
-    telegram_credentials=args.telegram_credentials,
+    # telegram_credentials=args.telegram_credentials,
     position_history_path=args.position_history_path,
 )
 

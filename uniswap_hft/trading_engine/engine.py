@@ -14,7 +14,7 @@ class TradingEngine:
         wallet_address: eth_typing.evm.ChecksumAddress,
         wallet_private_key: str,
         range_percentage: int,
-        token0_capital: int,
+        usd_capital: int,
         provider: str,
         burn_on_close: bool = False,
         debug: bool = False,
@@ -32,7 +32,7 @@ class TradingEngine:
             wallet_address (eth_typing.evm.ChecksumAddress): Address of the wallet to use
             wallet_private_key (str): Private key of the wallet
             range_percentage (int): Range of the position in percentage (e.g. 1 for 1%)
-            token0_capital (int): How much of the funds should be used to provide liquidity for token0 (e.g. 1000 for 1000USDC). Note: it will be ~doubled for the total position size
+            usd_capital (int): How much of the funds should be used to provide liquidity for token0 (e.g. 1000 for 1000USDC). Note: it will be ~doubled for the total position size
             provider (str): Provider URL of the blockchain RPC, e.g. infura
             burn_on_close (bool, optional): Whether to burn the position on close. Defaults to False.
             debug (bool, optional): Whether to enable debug logging. Defaults to False.
@@ -83,7 +83,7 @@ class TradingEngine:
             wallet_address=wallet_address,
             wallet_private_key=wallet_private_key,
             range_percentage=range_percentage,
-            token0_capital=token0_capital,
+            usd_capital=usd_capital,
             provider=provider,
             burn_on_close=burn_on_close,
             position_history_path=position_history_path,
@@ -130,8 +130,8 @@ class TradingEngine:
         for k, v in params.items():
             if k == "range_percentage":
                 self.web3_manager.range_percentage = v
-            elif k == "token0_capital":
-                self.web3_manager.token0_capital = v
+            elif k == "usd_capital":
+                self.web3_manager.usd_capital = v
             elif k == "pool_fee":
                 self.web3_manager.pool_fee = v
             elif k == "pool_address":

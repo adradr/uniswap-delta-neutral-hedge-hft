@@ -3,10 +3,13 @@ from unittest.mock import MagicMock
 import pytest
 
 import uniswap_hft.okex_integration.client
-from uniswap_hft.web3_manager.web_manager import (DepositFailed,
-                                                  InsufficientFunds,
-                                                  TransferFailed, Web3Manager,
-                                                  WithdrawTimeout)
+from uniswap_hft.web3_manager.web_manager import (
+    DepositFailed,
+    InsufficientFunds,
+    TransferFailed,
+    Web3Manager,
+    WithdrawTimeout,
+)
 
 
 @pytest.fixture
@@ -17,7 +20,7 @@ def web3_manager_cex():
         wallet_address="0x0000000000000000000000000000000000000001",  #  type: ignore
         wallet_private_key="0x0000000000000000000000000000000000000002",
         range_percentage=10,
-        token0_capital=1000,
+        usd_capital=1000,
         provider="https://polygon-rpc.com/",
         debug=True,
         cex_credentials={

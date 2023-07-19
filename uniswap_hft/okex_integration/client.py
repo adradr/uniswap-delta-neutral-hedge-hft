@@ -9,6 +9,7 @@ import okx.Funding
 import okx.MarketData
 import okx.PublicData
 import okx.SubAccount
+import okx.Trade
 
 
 class BlockTradingTimeOut(Exception):
@@ -20,6 +21,10 @@ class BlockTradingError(Exception):
 
 
 class BlockTradingNoQuote(Exception):
+    pass
+
+
+class BlockTradingMinimumNotionalSize(Exception):
     pass
 
 
@@ -135,6 +140,14 @@ class OKXClient:
         )
 
         self.market_data_manager = okx.MarketData.MarketAPI(
+            api_key=self.api_key,
+            api_secret_key=self.api_secret,
+            passphrase=self.passphrase,
+            debug=self.debug,
+            flag=self.okx_flag,
+        )
+
+        self.trade_manager = okx.Trade.TradeAPI(
             api_key=self.api_key,
             api_secret_key=self.api_secret,
             passphrase=self.passphrase,
@@ -452,6 +465,22 @@ class OKXClient:
         )
 
     @only_sub_account
+    def make_market_order(
+        self,
+        symbol: str,
+        amount: float,
+        side: typing.Literal["buy", "sell"],
+    ):
+        return self.trade_manager.place_order(
+            tgtCcy="base_ccy",
+            ordType="market",
+            tdMode="cash",
+            sz=amount,
+            instId=symbol,
+            side=side,
+        )
+
+    @only_sub_account
     def make_single_leg_block_trade(
         self,
         symbol: str,
@@ -490,6 +519,12 @@ class OKXClient:
         )
 
         # Get the quote for the RFQ
+        if (
+            rqf_response["code"] != "0"
+            and "For spot single-leg RFQs, the minimum notional value is $10000"
+            in rqf_response["msg"]
+        ):
+            raise BlockTradingMinimumNotionalSize(rqf_response)
         if rqf_response["code"] != "0":
             raise BlockTradingError(rqf_response)
 

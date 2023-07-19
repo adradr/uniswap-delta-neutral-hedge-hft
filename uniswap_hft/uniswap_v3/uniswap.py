@@ -8,8 +8,12 @@ from web3 import Web3
 from web3.types import TxReceipt
 
 from .constants import MAX_UINT_128, _netid_to_name
-from .util import (_get_eth_simple_cache_middleware, _load_contract,
-                   _str_to_addr, nearest_tick)
+from .util import (
+    _get_eth_simple_cache_middleware,
+    _load_contract,
+    _str_to_addr,
+    nearest_tick,
+)
 
 
 # Retry decorator
@@ -163,6 +167,7 @@ class Uniswap:
                 self.w3, abi_name="uniswap-v3/weth", address=self.weth_address
             )
 
+    @retry_on_exception()
     def parseTxReceiptForTokenId(self, rc: web3.types.TxReceipt) -> int:
         """Parses a tx receipt for the tokenId
 
@@ -180,6 +185,7 @@ class Uniswap:
         )
         return logs_transfer[0]["args"]["tokenId"]
 
+    @retry_on_exception()
     def parseTxReceiptForAmounts(self, rc: web3.types.TxReceipt) -> Dict:
         """Parses a tx receipt for the amounts
 
@@ -198,6 +204,7 @@ class Uniswap:
             "mint_rc_tick_upper": logs_transfer[0]["args"]["tickUpper"],
         }
 
+    @retry_on_exception()
     def check_allowance(self):
         """Check allowance for trading on the exchange."""
 
@@ -251,6 +258,7 @@ class Uniswap:
                 self.max_approval_int,
             )
 
+    @retry_on_exception()
     def approve(self, token_contract, spender, amount):
         """Approve a spender to spend an amount of a token.
 
@@ -275,6 +283,7 @@ class Uniswap:
         """Get a predefined deadline. 10min by default (same as the Uniswap SDK)."""
         return int(time.time()) + (10 * 60)
 
+    @retry_on_exception()
     def wrap_eth(self, amount: int):
         """Wrap ETH to WETH.
 
@@ -298,6 +307,7 @@ class Uniswap:
         tx_hash = self.w3.eth.sendRawTransaction(signed_tx.rawTransaction)
         return self.w3.eth.waitForTransactionReceipt(tx_hash)
 
+    @retry_on_exception()
     def unwrap_weth(self, amount: int):
         """Unwrap WETH to ETH.
 
@@ -354,10 +364,12 @@ class Uniswap:
         else:
             raise ValueError("Token0 is not ETH or WETH or USDC")
 
+    @retry_on_exception()
     def get_current_tick(self) -> int:
         """Returns the current tick of the pool"""
         return self.pool.functions.slot0().call()[1]
 
+    @retry_on_exception()
     def get_token_balances(self):
         """Gets the current token balance of the wallet for token0 and token1"""
         token0_balance = self.token0Contract.functions.balanceOf(self.address).call()
@@ -369,6 +381,7 @@ class Uniswap:
             "token1_symbol": self.token1_symbol,
         }
 
+    @retry_on_exception()
     def transfer_token(self, token_contract, recipient, amount) -> TxReceipt:
         """Transfer a token to a recipient.
 
@@ -390,6 +403,7 @@ class Uniswap:
         tx_hash = self.w3.eth.sendRawTransaction(signed_tx.rawTransaction)
         return self.w3.eth.waitForTransactionReceipt(tx_hash)
 
+    @retry_on_exception()
     def transfer_eth(self, recipient, amount) -> TxReceipt:
         """Transfer ETH to a recipient.
 

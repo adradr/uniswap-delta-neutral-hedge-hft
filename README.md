@@ -129,7 +129,7 @@ class Web3Manager:
         wallet_address: ChecksumAddress,
         wallet_private_key: str,
         range_percentage: int,
-        token0_capital: int,
+        usd_capital: int,
         provider: str,
         debug: bool = False,
     ):
@@ -146,7 +146,7 @@ The class is initialized with the details of the provider, Uniswap contract, and
 * `wallet_address` (ChecksumAddress): The address of the wallet where the funds are located.
 * `wallet_private_key` (str): The private key of the wallet.
 * `range_percentage` (int): How wide the range should be in percentage (e.g., 1 for 1%).
-* `token0_capital` (int): How much of the funds should be used to provide liquidity for token0 (e.g., 1000 for 1000 USDC). Note: it will be roughly doubled for the total position size.
+* `usd_capital` (int): How much of the funds should be used to provide liquidity for token0 (e.g., 1000 for 1000 USDC). Note: it will be roughly doubled for the total position size.
 * `provider` (str): The provider of the blockchain, e.g., Infura.
 * `debug` (bool, optional): Whether to enable debug logging. Defaults to False.
 
