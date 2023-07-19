@@ -1330,6 +1330,9 @@ class Web3Manager:
                 f"Current tick: {current_tick}. Range: {self.position_history[-1]['tick_lower']} - {self.position_history[-1]['tick_upper']}"
             )
 
+            # Disengage lock so that close_position and open can be executed
+            self.locked = False
+
             # Close position
             self.close_position()
 

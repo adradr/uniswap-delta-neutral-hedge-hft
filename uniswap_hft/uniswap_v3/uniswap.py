@@ -1,22 +1,21 @@
-import logging
 import time
-from functools import wraps
-from typing import Any, Callable, Dict, Union
-
+import web3
+import typing
+import logging
+import functools
 import web3.types
-from web3 import Web3
-from web3.types import TxReceipt
+import requests.exceptions
 
 from . import util
-from .constants import MAX_UINT_128, _netid_to_name
+from . import constants
 
 
 # Retry decorator
 def retry_on_exception(
     retries: int = 3,
     delay: int = 5,
-    exceptions: tuple = (Exception,),
-) -> Callable:
+    exceptions: tuple = (Exception, requests.exceptions.Timeout),
+) -> typing.Callable:
     """Retry decorator
 
     Args:
@@ -25,14 +24,14 @@ def retry_on_exception(
         exceptions (tuple, optional): Exceptions to catch. Defaults to (Exception,).
 
     Returns:
-        Callable: Decorated function
+        typing.Callable: Decorated function
     """
 
-    def decorator(func: Callable) -> Callable:
+    def decorator(func: typing.Callable) -> typing.Callable:
         """Decorator"""
 
-        @wraps(func)
-        def wrapper(*args: Any, **kwargs: Any) -> Any:
+        @functools.wraps(func)
+        def wrapper(*args: typing.Any, **kwargs: typing.Any) -> typing.Any:
             """Wrapper"""
             for _ in range(retries):
                 try:
@@ -64,7 +63,7 @@ class Uniswap:
             pool_address (str): Address of the pool
             address (str): Address of the wallet
             private_key (str, optional): Private key of the wallet. Defaults to None.
-            provider (Web3, optional): Web3 provider. Defaults to None.
+            provider (web3.Web3, optional): web3.Web3 provider. Defaults to None.
             version (int, optional): Uniswap version. Defaults to 3.
             debug (bool, optional): Debug mode. Defaults to False.
         """
@@ -78,11 +77,13 @@ class Uniswap:
         # Create logger object
         self.logger = logging.getLogger(__name__)
 
-        # Create Web3 object
-        self.w3 = Web3(Web3.HTTPProvider(self.provider, request_kwargs={"timeout": 60}))
+        # Create web3.Web3 object
+        self.w3 = web3.Web3(
+            web3.Web3.HTTPProvider(self.provider, request_kwargs={"timeout": 60})
+        )
         self.netid = int(self.w3.net.version)
-        if self.netid in _netid_to_name:
-            self.netname = _netid_to_name[self.netid]
+        if self.netid in constants._netid_to_name:
+            self.netname = constants._netid_to_name[self.netid]
         else:
             raise Exception(f"Unknown netid: {self.netid}")  # pragma: no cover
         self.logger.info(f"Using {self.w3} ('{self.netname}', netid: {self.netid})")
@@ -189,7 +190,7 @@ class Uniswap:
         return logs_transfer[0]["args"]["tokenId"]
 
     @retry_on_exception()
-    def parseTxReceiptForAmounts(self, rc: web3.types.TxReceipt) -> Dict:
+    def parseTxReceiptForAmounts(self, rc: web3.types.TxReceipt) -> typing.Dict:
         """Parses a tx receipt for the amounts
 
         Args:
@@ -385,7 +386,7 @@ class Uniswap:
         }
 
     @retry_on_exception()
-    def transfer_token(self, token_contract, recipient, amount) -> TxReceipt:
+    def transfer_token(self, token_contract, recipient, amount) -> web3.types.TxReceipt:
         """Transfer a token to a recipient.
 
         Args:
@@ -393,7 +394,7 @@ class Uniswap:
             recipient (str): The recipient address.
             amount (int): The amount to transfer.
         """
-        recipient = Web3.toChecksumAddress(recipient)
+        recipient = web3.Web3.toChecksumAddress(recipient)
         tx = token_contract.functions.transfer(recipient, amount).buildTransaction(
             {
                 "from": self.address,
@@ -407,7 +408,7 @@ class Uniswap:
         return self.w3.eth.waitForTransactionReceipt(tx_hash)
 
     @retry_on_exception()
-    def transfer_eth(self, recipient, amount) -> TxReceipt:
+    def transfer_eth(self, recipient, amount) -> web3.types.TxReceipt:
         """Transfer ETH to a recipient.
 
         Args:
@@ -440,12 +441,12 @@ class Uniswap:
         amount_0: int,
         amount_1: int,
         recipient: str,
-        deadline: Union[int, None] = None,
-    ) -> TxReceipt:
+        deadline: typing.Union[int, None] = None,
+    ) -> web3.types.TxReceipt:
         """Mint liquidity in a Uniswap v3 pool
 
         Returns:
-            TxReceipt: Transaction receipt
+            web3.types.TxReceipt: Transaction receipt
         """
         fee = self.pool.functions.fee().call()
         assert tick_lower < tick_upper, "Invalid tick range"
@@ -524,7 +525,9 @@ class Uniswap:
         return receipt
 
     @retry_on_exception()
-    def decrease_liquidity(self, tokenId: int, deadline: int = 2**64) -> TxReceipt:
+    def decrease_liquidity(
+        self, tokenId: int, deadline: int = 2**64
+    ) -> web3.types.TxReceipt:
         """
         Burns liquidity from the pool by using a tokenId
         """
@@ -587,8 +590,8 @@ class Uniswap:
         params = {
             "tokenId": tokenId,
             "recipient": self.address,
-            "amount0Max": MAX_UINT_128,
-            "amount1Max": MAX_UINT_128,
+            "amount0Max": constants.MAX_UINT_128,
+            "amount1Max": constants.MAX_UINT_128,
         }
 
         # Estimate the gas
@@ -669,7 +672,7 @@ class Uniswap:
         token_out_address: str,
         amount_in: int,
         pool_fee: int = 3000,
-        deadline: Union[int, None] = None,
+        deadline: typing.Union[int, None] = None,
     ):
         """
         Swaps `amount_in` of `token_in` for `token_out` using Uniswap V3
