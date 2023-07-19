@@ -1,13 +1,13 @@
-import time
-import web3
-import typing
-import logging
 import functools
-import web3.types
-import requests.exceptions
+import logging
+import time
+import typing
 
-from . import util
-from . import constants
+import requests.exceptions
+import web3
+import web3.types
+
+from . import constants, util
 
 
 # Retry decorator
