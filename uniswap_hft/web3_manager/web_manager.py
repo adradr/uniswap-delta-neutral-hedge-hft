@@ -1331,7 +1331,7 @@ class Web3Manager:
             )
 
             # Disengage lock so that close_position and open can be executed
-            self.locked = False
+            self.lock = False
 
             # Close position
             self.close_position()
