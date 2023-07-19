@@ -415,7 +415,7 @@ class Uniswap:
             recipient (str): The recipient address.
             amount (int): The amount to transfer.
         """
-        recipient = Web3.toChecksumAddress(recipient)
+        recipient = web3.Web3.toChecksumAddress(recipient)
         tx = {
             "from": self.address,
             "to": recipient,

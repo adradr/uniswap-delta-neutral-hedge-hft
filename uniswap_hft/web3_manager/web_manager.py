@@ -730,6 +730,9 @@ class Web3Manager:
                 amount = amount0
             elif watch_amount == "required_amount1_decimal":
                 amount = amount1
+            else:
+                e_msg = f"Invalid watch amount: {watch_amount}"
+                raise ValueError(e_msg)
             # Check if deposit is done
             if wallet_amount != amount:
                 break
