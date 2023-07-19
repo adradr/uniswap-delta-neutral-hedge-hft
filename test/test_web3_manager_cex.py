@@ -1,4 +1,5 @@
 from unittest.mock import MagicMock
+
 import pytest
 
 import uniswap_hft.okex_integration.client

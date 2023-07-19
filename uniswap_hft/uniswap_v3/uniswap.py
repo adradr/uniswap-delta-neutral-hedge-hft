@@ -7,8 +7,8 @@ import web3.types
 from web3 import Web3
 from web3.types import TxReceipt
 
-from .constants import MAX_UINT_128, _netid_to_name
 from . import util
+from .constants import MAX_UINT_128, _netid_to_name
 
 
 # Retry decorator

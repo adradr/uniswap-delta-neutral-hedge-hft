@@ -2,8 +2,8 @@ import datetime
 import logging
 import time
 
-from flask import Flask, jsonify, request
 import flask_jwt_extended
+from flask import Flask, jsonify, request
 
 from uniswap_hft.trading_engine import engine
 
