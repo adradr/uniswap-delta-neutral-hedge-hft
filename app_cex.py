@@ -321,7 +321,7 @@ trading_engine = engine.TradingEngine(
     provider=args.provider,
     burn_on_close=args.burn_on_close,
     cex_credentials=args.cex_credentials,
-    # telegram_credentials=args.telegram_credentials,
+    telegram_credentials=args.telegram_credentials,
     position_history_path=args.position_history_path,
 )
 
