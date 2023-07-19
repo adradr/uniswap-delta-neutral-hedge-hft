@@ -1087,12 +1087,15 @@ class Web3Manager:
                 f" (difference: {pct_diff_amount0 * 100:.2f} %)"
                 f" Use cex_existing_amount0_decimal for withdraw"
             )
+            withdraw_amount0_key = "cex_existing_amount0_decimal"
+
         if pct_diff_amount1 < 0:
             self.logger.warning(
                 f"Existing amount1 ({amounts['cex_existing_amount1_decimal']}) is less than required amount1 ({amounts['required_amount1_decimal']})"
                 f" (difference: {pct_diff_amount1 * 100:.2f} %)"
                 f" Use cex_existing_amount1_decimal for withdraw"
             )
+            withdraw_amount1_key = "cex_existing_amount1_decimal"
 
         return withdraw_amount0_key, withdraw_amount1_key
 
