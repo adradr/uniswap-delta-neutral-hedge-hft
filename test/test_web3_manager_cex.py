@@ -1,20 +1,13 @@
 from unittest.mock import MagicMock
-
 import pytest
 
 import uniswap_hft.okex_integration.client
-from uniswap_hft.web3_manager.web_manager import (
-    DepositFailed,
-    InsufficientFunds,
-    TransferFailed,
-    Web3Manager,
-    WithdrawTimeout,
-)
+import uniswap_hft.web3_manager.web_manager
 
 
 @pytest.fixture
 def web3_manager_cex():
-    return Web3Manager(
+    return uniswap_hft.web3_manager.web_manager.Web3Manager(
         pool_address="0x45dda9cb7c25131df268515131f647d726f50608",  #  type: ignore
         pool_fee=500,
         wallet_address="0x0000000000000000000000000000000000000001",  #  type: ignore
@@ -153,7 +146,7 @@ def test_wait_for_deposit_okx_blocktrading_timeup(web3_manager_cex):
         "cex_existing_amount0": 0,
         "cex_existing_amount0_decimal": 0,
     }
-    with pytest.raises(DepositFailed):
+    with pytest.raises(uniswap_hft.web3_manager.web_manager.DepositFailed):
         web3_manager_cex.wait_for_deposit_okx_blocktrading(
             amounts=amounts,
             watch_key="cex_existing_amount0",
@@ -231,7 +224,7 @@ def test_transfer_funds_from_sub_to_main_okx_blocktrading_failed(web3_manager_ce
         )
     )
 
-    with pytest.raises(TransferFailed):
+    with pytest.raises(uniswap_hft.web3_manager.web_manager.TransferFailed):
         web3_manager_cex.transfer_funds_from_sub_to_main_okx_blocktrading(
             amounts={"cex_existing_amount0": 1},
             amounts_key="cex_existing_amount0",
@@ -242,7 +235,7 @@ def test_transfer_funds_from_sub_to_main_okx_blocktrading_failed(web3_manager_ce
 def test_wait_for_withdrawal_okx_blocktrading_timeup(web3_manager_cex):
     web3_manager_cex.update_wallet_balance = MagicMock(return_value=(0, 0))
     initial_amounts = 0
-    with pytest.raises(WithdrawTimeout):
+    with pytest.raises(uniswap_hft.web3_manager.web_manager.WithdrawTimeout):
         web3_manager_cex.wait_for_withdrawal_okx_blocktrading(
             wallet_amount=initial_amounts,
             watch_amount="required_amount0_decimal",
@@ -289,7 +282,7 @@ def test_swap_amounts_okx_blocktrading_failure_not_enough_funds(web3_manager_cex
         }
     )
 
-    with pytest.raises(InsufficientFunds):
+    with pytest.raises(uniswap_hft.web3_manager.web_manager.InsufficientFunds):
         web3_manager_cex.swap_amounts_okx_blocktrading()
 
 

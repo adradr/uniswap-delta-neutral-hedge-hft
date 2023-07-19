@@ -3,13 +3,7 @@ import logging
 import time
 
 from flask import Flask, jsonify, request
-from flask_jwt_extended import (
-    JWTManager,
-    create_access_token,
-    create_refresh_token,
-    get_jwt_identity,
-    jwt_required,
-)
+import flask_jwt_extended
 
 from uniswap_hft.trading_engine import engine
 
@@ -34,7 +28,7 @@ class TradingEngineAPI:
         self.app.config["JWT_ACCESS_TOKEN_EXPIRES"] = datetime.timedelta(
             minutes=jwt_access_token_expires
         )
-        self.jwt = JWTManager(self.app)
+        self.jwt = flask_jwt_extended.JWTManager(self.app)
         self.allowed_users_passwords = allowed_users_passwords
 
         # Initialize logging
@@ -63,8 +57,10 @@ class TradingEngineAPI:
                     jsonify({"status": "error", "message": "Invalid credentials"}),
                     401,
                 )
-            access_token = create_access_token(identity=username, fresh=True)
-            refresh_token = create_refresh_token(identity=username)
+            access_token = flask_jwt_extended.create_access_token(
+                identity=username, fresh=True
+            )
+            refresh_token = flask_jwt_extended.create_refresh_token(identity=username)
             return (
                 jsonify(
                     {
@@ -77,14 +73,14 @@ class TradingEngineAPI:
             )
 
         @self.app.route("/refresh", methods=["POST"])
-        @jwt_required(refresh=True)
+        @flask_jwt_extended.jwt_required(refresh=True)
         def refresh():
-            identity = get_jwt_identity()
-            access_token = create_access_token(identity=identity)
+            identity = flask_jwt_extended.get_jwt_identity()
+            access_token = flask_jwt_extended.create_access_token(identity=identity)
             return jsonify({"status": "success", "access_token": access_token}), 200
 
         @self.app.route("/start", methods=["GET"])
-        @jwt_required()
+        @flask_jwt_extended.jwt_required()
         def start_engine():
             # Return error if engine is already running
             if self.engine.running:
@@ -128,7 +124,7 @@ class TradingEngineAPI:
                 )
 
         @self.app.route("/stop", methods=["GET"])
-        @jwt_required()
+        @flask_jwt_extended.jwt_required()
         def stop_engine():
             # Return error if engine is not running
             if not self.engine.running:
@@ -163,7 +159,7 @@ class TradingEngineAPI:
                 )
 
         @self.app.route("/stats", methods=["GET"])
-        @jwt_required()
+        @flask_jwt_extended.jwt_required()
         def engine_stats():
             if not self.engine.running:
                 return self.engine_not_running()
@@ -182,7 +178,7 @@ class TradingEngineAPI:
             )
 
         @self.app.route("/update-engine", methods=["GET"])
-        @jwt_required()
+        @flask_jwt_extended.jwt_required()
         def update_engine():
             # Only update if engine is running
             if not self.engine.running:
@@ -217,7 +213,7 @@ class TradingEngineAPI:
                 )
 
         @self.app.route("/update-params", methods=["POST"])
-        @jwt_required()
+        @flask_jwt_extended.jwt_required()
         def update_params():
             # Get params from request
             params = request.json

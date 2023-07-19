@@ -8,12 +8,7 @@ from web3 import Web3
 from web3.types import TxReceipt
 
 from .constants import MAX_UINT_128, _netid_to_name
-from .util import (
-    _get_eth_simple_cache_middleware,
-    _load_contract,
-    _str_to_addr,
-    nearest_tick,
-)
+from . import util
 
 
 # Retry decorator
@@ -93,7 +88,9 @@ class Uniswap:
         self.logger.info(f"Using {self.w3} ('{self.netname}', netid: {self.netid})")
         # Add POA Middleware if network is polygon
         if self.w3.net.version == "137":
-            self.w3.middleware_onion.inject(_get_eth_simple_cache_middleware(), layer=0)
+            self.w3.middleware_onion.inject(
+                util._get_eth_simple_cache_middleware(), layer=0
+            )
 
         # This code automatically approves you for trading on the exchange.
         # max_approval is to allow the contract to exchange on your behalf.
@@ -107,47 +104,53 @@ class Uniswap:
 
         # Load contracts
         # https://github.com/Uniswap/uniswap-v3-periphery/blob/main/deploys.md
-        factory_contract_address = _str_to_addr(
+        factory_contract_address = util._str_to_addr(
             "0x1F98431c8aD98523631AE4a59f267346ea31F984"
         )
-        self.factory_contract = _load_contract(
+        self.factory_contract = util._load_contract(
             self.w3, abi_name="uniswap-v3/factory", address=factory_contract_address
         )
-        quoter_addr = _str_to_addr("0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6")
-        self.router_address = _str_to_addr("0xE592427A0AEce92De3Edee1F18E0157C05861564")
-        self.quoter = _load_contract(
+        quoter_addr = util._str_to_addr("0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6")
+        self.router_address = util._str_to_addr(
+            "0xE592427A0AEce92De3Edee1F18E0157C05861564"
+        )
+        self.quoter = util._load_contract(
             self.w3, abi_name="uniswap-v3/quoter", address=quoter_addr
         )
-        self.router = _load_contract(
+        self.router = util._load_contract(
             self.w3, abi_name="uniswap-v3/router", address=self.router_address
         )
-        self.positionManager_addr = _str_to_addr(
+        self.positionManager_addr = util._str_to_addr(
             "0xC36442b4a4522E871399CD717aBDD847Ab11FE88"
         )
-        self.nonFungiblePositionManager = _load_contract(
+        self.nonFungiblePositionManager = util._load_contract(
             self.w3,
             abi_name="uniswap-v3/nonFungiblePositionManager",
             address=self.positionManager_addr,
         )
         if self.netname == "arbitrum":
-            multicall2_addr = _str_to_addr("0x50075F151ABC5B6B448b1272A0a1cFb5CFA25828")
+            multicall2_addr = util._str_to_addr(
+                "0x50075F151ABC5B6B448b1272A0a1cFb5CFA25828"
+            )
         else:
-            multicall2_addr = _str_to_addr("0x5BA1e12693Dc8F9c48aAD8770482f4739bEeD696")
-        self.multicall2 = _load_contract(
+            multicall2_addr = util._str_to_addr(
+                "0x5BA1e12693Dc8F9c48aAD8770482f4739bEeD696"
+            )
+        self.multicall2 = util._load_contract(
             self.w3, abi_name="uniswap-v3/multicall", address=multicall2_addr
         )
 
-        self.pool = _load_contract(
+        self.pool = util._load_contract(
             self.w3,
             abi_name="uniswap-v3/pool",
             address=pool_address,
         )
         self.token0 = self.pool.functions.token0().call()
         self.token1 = self.pool.functions.token1().call()
-        self.token0Contract = _load_contract(
+        self.token0Contract = util._load_contract(
             self.w3, abi_name="uniswap-v3/erc20", address=self.token0
         )
-        self.token1Contract = _load_contract(
+        self.token1Contract = util._load_contract(
             self.w3, abi_name="uniswap-v3/erc20", address=self.token1
         )
         self.token0_decimals = self.token0Contract.functions.decimals().call()
@@ -163,7 +166,7 @@ class Uniswap:
         elif self.token1_symbol == "WETH":
             self.weth_address = self.token1
         if self.weth_address is not None:
-            self.weth = _load_contract(
+            self.weth = util._load_contract(
                 self.w3, abi_name="uniswap-v3/weth", address=self.weth_address
             )
 
@@ -452,8 +455,8 @@ class Uniswap:
             deadline = self._deadline()
 
         # Adjust for tick spacing
-        tick_lower = nearest_tick(tick_lower, fee=fee)
-        tick_upper = nearest_tick(tick_upper, fee=fee)
+        tick_lower = util.nearest_tick(tick_lower, fee=fee)
+        tick_upper = util.nearest_tick(tick_upper, fee=fee)
 
         # Create a dict of arguments
         params = {
