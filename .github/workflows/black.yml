@@ -1,6 +1,9 @@
 name: Python Black Formatter
 
-on: [pull_request]
+on:
+  push:
+    branches:
+      - 'main*'
 
 jobs:
   format:
