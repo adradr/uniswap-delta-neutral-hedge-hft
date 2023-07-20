@@ -1,3 +1,4 @@
+import math
 import datetime
 import json
 import logging
@@ -51,6 +52,12 @@ def lock(func):
             return result
 
     return wrapper
+
+
+def round_down(number: float, decimals: int = 0) -> float:
+    """Round a number down to the given number of decimal places."""
+    factor = 10.0**decimals
+    return math.floor(number * factor) / factor
 
 
 class Web3Manager:
@@ -722,27 +729,46 @@ class Web3Manager:
         max_deadline: int = 300,
         sleep_time: int = 5,
     ) -> None:
-        # Check if deposit is done
+        """
+        Wait for a withdrawal to complete or until deadline is reached.
+
+        Args:
+        - wallet_amount: Amount in the wallet to be checked.
+        - watch_amount: Specifies the amount to watch.
+        - max_deadline: Maximum time in seconds to wait.
+        - sleep_time: Time in seconds to sleep between checks.
+
+        Raises:
+        - ValueError: If an invalid watch amount is provided.
+        - WithdrawTimeout: If the withdrawal doesn't complete before the deadline.
+        """
+        WATCH_AMOUNTS = {
+            "required_amount0_decimal": 0,
+            "cex_existing_amount0_decimal": 0,
+            "required_amount1_decimal": 1,
+            "cex_existing_amount1_decimal": 1,
+        }
+
+        if watch_amount not in WATCH_AMOUNTS:
+            e_msg = f"Invalid watch amount: {watch_amount}"
+            self.logger.error(e_msg)
+            self.send_telegram_message(message=e_msg)
+            raise ValueError(e_msg)
+
         deadline = time.time() + max_deadline
+
         while True:
-            amount0, amount1 = self.update_wallet_balance()
-            if watch_amount == "required_amount0_decimal":
-                amount = amount0
-            elif watch_amount == "required_amount1_decimal":
-                amount = amount1
-            else:
-                e_msg = f"Invalid watch amount: {watch_amount}"
-                raise ValueError(e_msg)
-            # Check if deposit is done
-            if wallet_amount != amount:
-                break
-            elif time.time() > deadline:
+            amounts = self.update_wallet_balance()
+            if wallet_amount < amounts[WATCH_AMOUNTS[watch_amount]]:
+                return
+
+            if time.time() > deadline:
                 e_msg = f"Withdrawal failed: deadline exceeded ({watch_amount})"
                 self.send_telegram_message(message=e_msg)
                 raise WithdrawTimeout(e_msg)
-            else:
-                self.logger.info("Waiting for withdrawal to arrive")
-                time.sleep(sleep_time)
+
+            self.logger.info("Waiting for withdrawal to arrive")
+            time.sleep(sleep_time)
 
     def withdraw_amounts_okx_blocktrading(
         self,
@@ -966,6 +992,15 @@ class Web3Manager:
 
         # Update CEX amounts after blocktrade / noswap
         amounts = self.get_amounts_okx_blocktrading()
+        # Account for rounding errors
+        rounding_keys = [
+            "cex_existing_amount0_decimal",
+            "cex_existing_amount1_decimal",
+        ]
+        # Round keys in amounts for 3 decimals down if they are in rounding_keys
+        amounts = {
+            k: round_down(v, 3) if k in rounding_keys else v for k, v in amounts.items()
+        }
         self.log_amounts_okx_blocktrading(amounts=amounts)
         withdraw_amount0, withdraw_amount1 = self.check_required_and_existing_amounts(
             amounts=amounts
