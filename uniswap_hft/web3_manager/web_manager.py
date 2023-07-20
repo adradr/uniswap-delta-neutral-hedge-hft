@@ -41,13 +41,16 @@ class WithdrawTimeout(Exception):
 def lock(func):
     def wrapper(self, *args, **kwargs):
         if self.lock:
-            print("Function already locked. Returning without executing.")
+            self.logger.info(f"Function {func.__name__} is locked, skipping execution.")
             return None
         else:
+            self.logger.info(f"Engaging lock by function: {func.__name__}.")
             self.lock = True
             try:
+                self.logger.info(f"Executing function: {func.__name__}.")
                 result = func(self, *args, **kwargs)
             finally:
+                self.logger.info(f"Releasing lock by function: {func.__name__}.")
                 self.lock = False
             return result
 
