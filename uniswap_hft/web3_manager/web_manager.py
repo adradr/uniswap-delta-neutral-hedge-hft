@@ -852,19 +852,38 @@ class Web3Manager:
         self.logger.error(e_msg)
         self.send_telegram_message(message=e_msg)
 
-        # Make block trades with USDC or USDT and swap to the other stablecoin
-        return_dict = {}
-        return_dict["token_swap"] = self.make_block_trade(
-            symbol=symbol,
-            direction=direction,
-            amount=amounts[amounts_key],
-        )
-        return_dict["stable_swap"] = self.swap_stable(
-            token_swap=return_dict["token_swap"],
-            direction="sell",  # We always sell USDT for USDC
-        )
+        # If we would be buying ETH, we have USDC, so we need to sell USDT for ETH
+        # Since we don't have USDT we need to do the stable swap first
+        # Stable swap is done in this case by buying USDT with USDC
+        if direction == "buy":
+            return_dict = {}
+            return_dict["stable_swap"] = self.swap_stable(
+                token_swap=return_dict["token_swap"],
+                direction="buy",
+            )
+            return_dict["token_swap"] = self.make_block_trade(
+                symbol=symbol,
+                direction="buy",
+                amount=amounts[amounts_key],
+            )
 
-        return return_dict
+            return return_dict
+
+        # If we would be selling ETH, we will sell it for USDT
+        # We need to swap USDT for USDC afterwards
+        elif direction == "sell":
+            return_dict = {}
+            return_dict["token_swap"] = self.make_block_trade(
+                symbol=symbol,
+                direction="sell",
+                amount=amounts[amounts_key],
+            )
+            return_dict["stable_swap"] = self.swap_stable(
+                token_swap=return_dict["token_swap"],
+                direction="sell",
+            )
+
+            return return_dict
 
     def handle_minimum_notional_size_exception(
         self, e_msg, amounts, amounts_key, direction
