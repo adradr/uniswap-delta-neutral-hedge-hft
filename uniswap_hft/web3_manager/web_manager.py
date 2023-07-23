@@ -294,6 +294,14 @@ class Web3Manager:
         except:
             self.logger.info("Position history not found")
 
+    def lock_on(self, msg: str):
+        self.lock = True
+        self.logger.info("Lock engaged: " + msg)
+
+    def lock_off(self, msg: str):
+        self.lock = False
+        self.logger.info("Lock released: " + msg)
+
     def send_telegram_message(self, message: str):
         """Send a telegram message"""
         if self.telegram_credentials is not None:
@@ -1324,6 +1332,8 @@ class Web3Manager:
         # Check if position is open
         if not self.position_history[-1]["is_open"]:
             self.logger.info("No open position, opening position")
+            # Disengage lock so that close_position and open can be executed
+            self.lock_off("update_position -> no open position")
             self.open_position()
             return
 
@@ -1353,7 +1363,7 @@ class Web3Manager:
             )
 
             # Disengage lock so that close_position and open can be executed
-            self.lock = False
+            self.lock_off("update_position -> price outside of range")
 
             # Close position
             self.close_position()
