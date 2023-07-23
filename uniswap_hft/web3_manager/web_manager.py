@@ -823,16 +823,16 @@ class Web3Manager:
             maximum_spread_bps=self.cex_client_subaccount.maximum_spread_bps,
         )
 
-    def swap_stable(self, token_swap):
+    def swap_stable(self, token_swap, direction):
         stable_amount = token_swap["data"][0]["legs"][0]["sz"]
         stable_amount *= token_swap["data"][0]["legs"][0]["px"]
-        return self.make_block_trade("USDT-USDC", "buy", stable_amount)
+        return self.make_block_trade(
+            symbol="USDT-USDC",
+            direction=direction,
+            amount=stable_amount,
+        )
 
-    def handle_no_quote_exception(self, e_msg, amounts, amounts_key):
-        e_msg = f"Blocktrade got no quotes({amounts_key}): {e_msg}. Retrying...Routing to USDC, instead of USDT or USDT instead of USDT"
-        self.logger.error(e_msg)
-        self.send_telegram_message(message=e_msg)
-
+    def handle_no_quote_exception(self, e_msg, amounts, amounts_key, direction):
         if amounts["cex_symbol"] == "ETH-USDT":
             symbol = "ETH-USDC"
         elif amounts["cex_symbol"] == "ETH-USDC":
@@ -840,14 +840,43 @@ class Web3Manager:
         else:
             raise Exception(f"Unknown symbol: {amounts['cex_symbol']}")
 
+        e_msg = f"Blocktrade got no quotes({amounts_key}): {e_msg}. Retrying...Routing to {symbol} instead of {amounts['cex_symbol']}"
+        self.logger.error(e_msg)
+        self.send_telegram_message(message=e_msg)
+
         # Make block trades with USDC or USDT and swap to the other stablecoin
         return_dict = {}
         return_dict["token_swap"] = self.make_block_trade(
-            symbol, "buy", amounts[amounts_key]
+            symbol=symbol,
+            direction=direction,
+            amount=amounts[amounts_key],
         )
-        return_dict["stable_swap"] = self.swap_stable(return_dict["token_swap"])
+        return_dict["stable_swap"] = self.swap_stable(
+            token_swap=return_dict["token_swap"],
+            direction="sell",  # We always sell USDT for USDC
+        )
 
         return return_dict
+
+    def handle_minimum_notional_size_exception(
+        self, e_msg, amounts, amounts_key, direction
+    ):
+        # Account for larger fees
+        market_order_amount = amounts[amounts_key] * 1.01
+
+        self.logger.error(
+            "Blocktrade failed: minimum notional value is $10000. "
+            f"Spot trading {amounts['cex_symbol']} of {market_order_amount} amount"
+        )
+        block_trade_response = self.cex_client_subaccount.make_market_order(
+            symbol=amounts["cex_symbol"],
+            side=direction,
+            amount=market_order_amount,
+        )
+
+        self.logger.info(block_trade_response)
+
+        return {"token_swap": block_trade_response}
 
     def block_trade_okx_blocktrading(
         self,
@@ -857,7 +886,9 @@ class Web3Manager:
     ) -> dict:
         try:
             block_trade_response = self.make_block_trade(
-                amounts["cex_symbol"], direction, amounts[amounts_key]
+                symbol=amounts["cex_symbol"],
+                direction=direction,
+                amount=amounts[amounts_key],
             )
             self.logger.info(block_trade_response)
             return {"token_swap": block_trade_response}
@@ -865,25 +896,20 @@ class Web3Manager:
         except (
             uniswap_hft.okex_integration.client.BlockTradingMinimumNotionalSize
         ) as e_msg:
-            # Account for larger fees
-            market_order_amount = amounts[amounts_key] * 1.01
-
-            self.logger.error(
-                "Blocktrade failed: minimum notional value is $10000"
-                f"Spot trading {amounts['cex_symbol']} of {market_order_amount} amount"
+            return self.handle_minimum_notional_size_exception(
+                e_msg=str(e_msg),
+                amounts=amounts,
+                amounts_key=amounts_key,
+                direction=direction,
             )
-            block_trade_response = self.cex_client_subaccount.make_market_order(
-                symbol=amounts["cex_symbol"],
-                side=direction,
-                amount=market_order_amount,
-            )
-
-            self.logger.info(block_trade_response)
-
-            return {"token_swap": block_trade_response}
 
         except uniswap_hft.okex_integration.client.BlockTradingNoQuote as e_msg:
-            return self.handle_no_quote_exception(str(e_msg), amounts, amounts_key)
+            return self.handle_no_quote_exception(
+                e_msg=str(e_msg),
+                amounts=amounts,
+                amounts_key=amounts_key,
+                direction=direction,
+            )
 
         except (
             uniswap_hft.okex_integration.client.BlockTradingTimeOut,
@@ -892,9 +918,7 @@ class Web3Manager:
             e_msg = f"Blocktrade failed({amounts_key}): {e_msg}"
             self.logger.error(e_msg)
             self.send_telegram_message(message=e_msg)
-            raise BlocktradeFailed(
-                e_msg
-            )  # TODO: minimum notional error exception handling
+            raise BlocktradeFailed(e_msg)
 
     def swap_amounts_okx_blocktrading(self) -> typing.List:
         """
@@ -1045,52 +1069,6 @@ class Web3Manager:
                 currency=self.token1_symbol_cex,
             )
         )
-
-        # try:
-        #     return_values.append(
-        #         self.withdraw_amounts_okx_blocktrading(
-        #             wallet_amount=wallet_amount0,
-        #             amounts=amounts,
-        #             amounts_key=withdraw_amount0,
-        #             currency=self.token0_symbol_cex,
-        #         )
-        #     )
-
-        #     return_values.append(
-        #         self.withdraw_amounts_okx_blocktrading(
-        #             wallet_amount=wallet_amount1,
-        #             amounts=amounts,
-        #             amounts_key=withdraw_amount1,
-        #             currency=self.token1_symbol_cex,
-        #         )
-        #     )
-
-        # except WithdrawTimeout as e:
-        #     self.logger.error(
-        #         "Withdraw timeout, initiating restart of position opening"
-        #     )
-        #     # Start the background process for checking funds arrival
-        #     wallet_amount = (
-        #         wallet_amount0
-        #         if "required_amount0_decimal" in e.args[0]
-        #         else wallet_amount1
-        #     )
-        #     watch_amount = (
-        #         "required_amount0_decimal"
-        #         if "required_amount0_decimal" in e.args[0]
-        #         else "required_amount1_decimal"
-        #     )
-        #     self.background_process = multiprocessing.Process(
-        #         target=self.handle_wait_for_withdrawal_okx_blocktrading_exception,
-        #         args=(
-        #             wallet_amount,
-        #             watch_amount,
-        #             7200,
-        #             60,
-        #         ),
-        #     )
-        #     self.background_process.start()
-        #     return_values.append(e.args[0])
 
         return return_values
 
