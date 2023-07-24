@@ -1359,6 +1359,8 @@ class Web3Manager:
         # Get current price and tick
         current_price = self.get_current_price()
         current_tick = self.get_current_tick()
+        tick_lower = self.position_history[-1]["mint_rc_tick_lower"]
+        tick_upper = self.position_history[-1]["mint_rc_tick_upper"]
 
         # Read current tick from Uniswap V3 contract
 
@@ -1371,14 +1373,11 @@ class Web3Manager:
         self.store_position_history()
 
         # Only if tick is higher or lower than range close position
-        if (
-            current_tick > self.position_history[-1]["mint_rc_tick_upper"]
-            or current_tick < self.position_history[-1]["mint_rc_tick_lower"]
-        ):
+        if current_tick > tick_upper or current_tick < tick_lower:
             # Log close position
             self.logger.info("Price is outside of range. Closing position")
             self.logger.info(
-                f"Current tick: {current_tick}. Range: {self.position_history[-1]['tick_lower']} - {self.position_history[-1]['tick_upper']}"
+                f"Current tick: {current_tick}. Range: {tick_lower} - {tick_upper}"
             )
 
             # Disengage lock so that close_position and open can be executed
