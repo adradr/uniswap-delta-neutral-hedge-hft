@@ -127,21 +127,20 @@ class TradingEngine:
     def update_params(self, params: dict):
         self.logger.info("Updating trading engine")
 
+        allowed_keys = [
+            "range_percentage",
+            "usd_capital",
+            "pool_fee",
+            "pool_address",
+            "wallet_address",
+            "wallet_private_key",
+            "provider",
+            "burn_on_close",
+        ]
+
         for k, v in params.items():
-            if k == "range_percentage":
-                self.web3_manager.range_percentage = v
-            elif k == "usd_capital":
-                self.web3_manager.usd_capital = v
-            elif k == "pool_fee":
-                self.web3_manager.pool_fee = v
-            elif k == "pool_address":
-                self.web3_manager.pool_address = v
-            elif k == "wallet_address":
-                self.web3_manager.wallet_address = v
-            elif k == "wallet_private_key":
-                self.web3_manager.wallet_private_key = v
-            elif k == "provider":
-                self.web3_manager.provider = v
+            if k in allowed_keys:
+                setattr(self.web3_manager, k, v)
             else:
                 self.logger.warning("Unknown parameter %s", k)
 
