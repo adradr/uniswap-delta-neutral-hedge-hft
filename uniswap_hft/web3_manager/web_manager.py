@@ -832,8 +832,8 @@ class Web3Manager:
         )
 
     def swap_stable(self, token_swap, direction):
-        stable_amount = token_swap["data"][0]["legs"][0]["sz"]
-        stable_amount *= token_swap["data"][0]["legs"][0]["px"]
+        stable_amount = int(token_swap["data"][0]["legs"][0]["sz"])
+        stable_amount *= int(token_swap["data"][0]["legs"][0]["px"])
         return self.make_block_trade(
             symbol="USDT-USDC",
             direction=direction,
@@ -1481,7 +1481,7 @@ class Web3Manager:
             f"Amount1: {mint_amounts['mint_rc_amount1']/10**self.decimal1} {self.token1_symbol}\n"
             f"Price: {range_amounts['price_current']}\n"
             f"Range: {range_amounts['range_lower']} - {range_amounts['range_upper']}\n"
-            f"Ticks: {mint_amounts['mint_rc_tick_lower']} - {mint_amounts['mint_rc_tick_upper']}\n"
+            f"Ticks: {mint_amounts['mint_rc_tick_lower']} -> {mint_amounts['mint_rc_tick_upper']}\n"
             f"https://app.uniswap.org/#/pool/{tokenId}"
         )
 
