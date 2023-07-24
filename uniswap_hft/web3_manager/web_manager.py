@@ -1372,8 +1372,8 @@ class Web3Manager:
 
         # Only if tick is higher or lower than range close position
         if (
-            current_tick > self.position_history[-1]["tick_upper"]
-            or current_tick < self.position_history[-1]["tick_lower"]
+            current_tick > self.position_history[-1]["mint_rc_tick_upper"]
+            or current_tick < self.position_history[-1]["mint_rc_tick_lower"]
         ):
             # Log close position
             self.logger.info("Price is outside of range. Closing position")
