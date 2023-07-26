@@ -151,4 +151,4 @@ def test_engine_stats_running(test_app):
         assert response.status_code == 200
         assert response.json["status"] == "success"
         assert response.json["message"] == "Stats for TradingEngine"
-        assert response.json["stats"] == {"test": "test"}
+        assert response.json["results"] == {"test": "test"}

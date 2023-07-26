@@ -209,6 +209,25 @@ class Uniswap:
         }
 
     @retry_on_exception()
+    def parseTxReceiptForCollectAmounts(self, rc: web3.types.TxReceipt) -> typing.Dict:
+        """Parses a tx receipt for the amounts
+
+        Args:
+            rc (web3.types.TxReceipt): web3.types.TxReceipt object instance returned by open_position function
+
+        Returns:
+            int: tokenId of Uniswap V3 NFT
+        """
+        logs_transfer = self.nonFungiblePositionManager.events.Collect().processReceipt(
+            rc
+        )
+        return {
+            "collect_rc_amount0": logs_transfer[0]["args"]["amount0"],
+            "collect_rc_amount1": logs_transfer[0]["args"]["amount1"],
+            "tokenId": logs_transfer[0]["args"]["tokenId"],
+        }
+
+    @retry_on_exception()
     def check_allowance(self):
         """Check allowance for trading on the exchange."""
 

@@ -1,6 +1,6 @@
 [Back to Main README](../README.md)
 
-## uniswap_hft.api
+## uniswap_hft.trading_engine.api
 
 The Trading Engine API provides interfaces for managing and interacting with a trading engine. The following documentation details all the different endpoints and requests that can be made to the API with their corresponding responses.
 
@@ -67,7 +67,7 @@ Endpoint for starting the trading engine. Returns information about the state of
   - `status` (string): The status of the request.
   - `message` (string): A message describing the result of the request.
   - `engine` (string): Current state of the engine.
-  - `stats` (object): Information about the initial state of the engine after starting (only included on success).
+  - `results` (object): Information about the initial state of the engine after starting (only included on success).
 
 ### GET /stop
 
@@ -85,7 +85,7 @@ Endpoint for stopping the trading engine. Returns information about the state of
   - `status` (string): The status of the request.
   - `message` (string): A message describing the result of the request.
   - `engine` (string): Current state of the engine.
-  - `stats` (object): Information about the final state of the engine after stopping (only included on success).
+  - `results` (object): Information about the final state of the engine after stopping (only included on success).
 
 ### GET /stats
 
@@ -105,7 +105,26 @@ Endpoint for fetching statistics about the current state of the trading engine. 
   - `status` (string): The status of the request.
   - `message` (string): A message describing the result of the request.
   - `engine` (string): Current state of the engine.
-  - `stats` (object): The most recent position history of the trading engine.
+  - `results` (object): The most recent position history of the trading engine.
+
+### GET /history
+
+Endpoint for fetching full history of the trading engine. Returns information about the state of the engine. Requires a valid access token.
+
+#### Request
+
+- Method: `GET`
+- Headers: `Authorization` header with the format `"Bearer {access_token}"`.
+
+#### Response
+
+- Status: `200` on success, `404` if the engine is not running.
+- Body: JSON object with the following properties:
+  - `status` (string): The status of the request.
+  - `message` (string): A message describing the result of the request.
+  - `engine` (string): Current state of the engine.
+  - `results` (object): Information about the final state of the engine after stopping (only included on success).
+
 
 ### GET /update-engine
 
@@ -123,7 +142,7 @@ Endpoint for manually triggering an update of the trading engine. Returns inform
   - `status` (string): The status of the request.
   - `message` (string): A message describing the result of the request.
   - `engine` (string): Current state of the engine.
-  - `stats` (object): Information about the state of the engine after update (only included on success).
+  - `results` (object): Information about the state of the engine after update (only included on success).
 
 ### POST /update-params
 

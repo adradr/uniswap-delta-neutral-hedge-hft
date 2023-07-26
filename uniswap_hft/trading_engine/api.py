@@ -105,7 +105,7 @@ class TradingEngineAPI:
                             "status": "success",
                             "message": f"Started {type(self.engine).__name__}",
                             "engine": "running" if self.engine.running else "stopped",
-                            "stats": position_history,
+                            "results": position_history,
                         }
                     ),
                     200,
@@ -140,7 +140,7 @@ class TradingEngineAPI:
                             "status": "success",
                             "message": f"Stopped {type(self.engine).__name__}",
                             "engine": "running" if self.engine.running else "stopped",
-                            "stats": position_history,
+                            "results": position_history,
                         }
                     ),
                     200,
@@ -169,7 +169,26 @@ class TradingEngineAPI:
                         "status": "success",
                         "message": f"Stats for {type(self.engine).__name__}",
                         "engine": "running" if self.engine.running else "stopped",
-                        "stats": self.engine.web3_manager.position_history[-1]
+                        "results": self.engine.web3_manager.position_history[-1]
+                        if self.engine.running
+                        else None,
+                    }
+                ),
+                200,
+            )
+
+        @self.app.route("/history", methods=["GET"])
+        @flask_jwt_extended.jwt_required()
+        def full_history():
+            if not self.engine.running:
+                return self.engine_not_running()
+            return (
+                jsonify(
+                    {
+                        "status": "success",
+                        "message": f"Stats for {type(self.engine).__name__}",
+                        "engine": "running" if self.engine.running else "stopped",
+                        "results": self.engine.web3_manager.position_history
                         if self.engine.running
                         else None,
                     }
@@ -194,7 +213,7 @@ class TradingEngineAPI:
                             "status": "success",
                             "message": f"Updated {type(self.engine).__name__}",
                             "engine": "running" if self.engine.running else "stopped",
-                            "stats": position_history,
+                            "results": position_history,
                         }
                     ),
                     200,

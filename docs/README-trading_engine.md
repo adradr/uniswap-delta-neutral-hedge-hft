@@ -1,6 +1,6 @@
 [Back to Main README](../README.md)
 
-## uniswap_hft.trading_engine
+## uniswap_hft.trading_engine.engine
 
 The `TradingEngine` class is an advanced trading bot designed to operate on the Uniswap protocol with high-frequency trading (HFT) strategies. It interfaces with the Ethereum blockchain, as well as the OKEX exchange (and optionally a Telegram bot) to manage, update, and retrieve trading stats in real time.
 

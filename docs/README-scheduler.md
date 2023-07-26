@@ -1,6 +1,6 @@
 [Back to Main README](../README.md)
 
-## uniswap_hft.scheduler
+## uniswap_hft.scheduler
 
 This script is designed to regularly run tasks (update a trading engine and retrieve its stats) at specified intervals. Here's a breakdown of its functionality:
 
