@@ -839,6 +839,7 @@ class Web3Manager:
     def swap_stable(self, token_swap, direction):
         stable_amount = float(token_swap["data"][0]["legs"][0]["sz"])
         stable_amount *= float(token_swap["data"][0]["legs"][0]["px"])
+        stable_amount = round_down(stable_amount, 2)
         return self.make_block_trade(
             symbol="USDT-USDC",
             direction=direction,
