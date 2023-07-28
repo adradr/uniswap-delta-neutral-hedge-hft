@@ -836,10 +836,9 @@ class Web3Manager:
             maximum_spread_bps=self.cex_client_subaccount.maximum_spread_bps,
         )
 
-    def swap_stable(self, token_swap, direction):
-        stable_amount = float(token_swap["data"][0]["legs"][0]["sz"])
-        stable_amount *= float(token_swap["data"][0]["legs"][0]["px"])
-        stable_amount = round_down(stable_amount, 2)
+    def swap_stable(self, amount, direction):
+        stable_amount = round_down(amount, 2)
+        self.logger.info(f"Swapping stable amount: {stable_amount}")
         return self.make_block_trade(
             symbol="USDT-USDC",
             direction=direction,
@@ -854,19 +853,26 @@ class Web3Manager:
         else:
             raise Exception(f"Unknown symbol: {amounts['cex_symbol']}")
 
-        e_msg = f"Blocktrade got no quotes({amounts_key}): {e_msg}. Retrying...Routing to {symbol} instead of {amounts['cex_symbol']}"
+        e_msg = f"Blocktrade got no quotes({amounts_key}): {e_msg}. Retrying...Routing to {symbol} instead of {amounts['cex_symbol']}, direction: {direction}"
         self.logger.error(e_msg)
         self.send_telegram_message(message=e_msg)
 
         # If we would be buying ETH, we have USDC, so we need to sell USDT for ETH
         # Since we don't have USDT we need to do the stable swap first
         # Stable swap is done in this case by buying USDT with USDC
+        return_dict = {}
         if direction == "buy":
-            return_dict = {}
+            self.logger.info("Swapping stable amount first, then buying ETH")
             return_dict["stable_swap"] = self.swap_stable(
-                token_swap=return_dict["token_swap"],
+                token_swap=amounts[amounts_key.replace("_in_token0", "_in_token1")],
                 direction="buy",
             )
+
+            # We need to calculate the amount of ETH we will get from the stable swap
+            eth_amount = float(return_dict["stable_swap"]["data"][0]["legs"][0]["sz"])
+            eth_amount /= float(return_dict["stable_swap"]["data"][0]["legs"][0]["px"])
+            eth_amount = round_down(eth_amount, 6)
+
             return_dict["token_swap"] = self.make_block_trade(
                 symbol=symbol,
                 direction="buy",
@@ -878,12 +884,19 @@ class Web3Manager:
         # If we would be selling ETH, we will sell it for USDT
         # We need to swap USDT for USDC afterwards
         elif direction == "sell":
-            return_dict = {}
+            self.logger.info("Selling ETH, then swapping stable amount")
             return_dict["token_swap"] = self.make_block_trade(
                 symbol=symbol,
                 direction="sell",
                 amount=amounts[amounts_key],
             )
+
+            # We need to calculate the amount of USDT we will get from the token swap
+            stable_amount = float(return_dict["token_swap"]["data"][0]["legs"][0]["sz"])
+            stable_amount *= float(
+                return_dict["token_swap"]["data"][0]["legs"][0]["px"]
+            )
+            stable_amount = round_down(stable_amount, 2)
             return_dict["stable_swap"] = self.swap_stable(
                 token_swap=return_dict["token_swap"],
                 direction="sell",
