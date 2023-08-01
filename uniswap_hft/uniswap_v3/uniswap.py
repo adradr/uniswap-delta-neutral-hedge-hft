@@ -290,10 +290,14 @@ class Uniswap:
             spender (str): The spender address.
             amount (int): The amount to approve.
         """
+        base_fee = self.w3.eth.get_block("latest")["baseFeePerGas"]
+        buffered_base_fee = int(base_fee * 1.1)  # adjust the multiplier as needed
         tx = token_contract.functions.approve(spender, amount).buildTransaction(
             {
                 "from": self.address,
                 "nonce": self.w3.eth.getTransactionCount(self.address),
+                "maxPriorityFeePerGas": self.w3.eth.gasPrice,  # This may not be as critical on L2, but you can still set it
+                "maxFeePerGas": buffered_base_fee,
             }
         )
         signed_tx = self.w3.eth.account.sign_transaction(
@@ -316,12 +320,17 @@ class Uniswap:
         if self.weth_address is None:
             raise ValueError("WETH address is not set.")
 
+        base_fee = self.w3.eth.get_block("latest")["baseFeePerGas"]
+        buffered_base_fee = int(base_fee * 1.1)  # adjust the multiplier as needed
+
         tx = self.weth.functions.deposit().buildTransaction(
             {
                 "from": self.address,
                 "value": amount,
                 "nonce": self.w3.eth.getTransactionCount(self.address),
-                "gasPrice": self.w3.eth.gasPrice,
+                # "gasPrice": self.w3.eth.gasPrice,
+                "maxPriorityFeePerGas": self.w3.eth.gasPrice,  # This may not be as critical on L2, but you can still set it
+                "maxFeePerGas": buffered_base_fee,
             }
         )
         signed_tx = self.w3.eth.account.sign_transaction(
@@ -340,11 +349,16 @@ class Uniswap:
         if self.weth_address is None:
             raise ValueError("WETH address is not set.")
 
+        base_fee = self.w3.eth.get_block("latest")["baseFeePerGas"]
+        buffered_base_fee = int(base_fee * 1.1)  # adjust the multiplier as needed
+
         tx = self.weth.functions.withdraw(amount).buildTransaction(
             {
                 "from": self.address,
                 "nonce": self.w3.eth.getTransactionCount(self.address),
-                "gasPrice": self.w3.eth.gasPrice,
+                # "gasPrice": self.w3.eth.gasPrice,
+                "maxPriorityFeePerGas": self.w3.eth.gasPrice,  # This may not be as critical on L2, but you can still set it
+                "maxFeePerGas": buffered_base_fee,
             }
         )
         signed_tx = self.w3.eth.account.sign_transaction(
@@ -414,10 +428,14 @@ class Uniswap:
             amount (int): The amount to transfer.
         """
         recipient = web3.Web3.toChecksumAddress(recipient)
+        base_fee = self.w3.eth.get_block("latest")["baseFeePerGas"]
+        buffered_base_fee = int(base_fee * 1.1)  # adjust the multiplier as needed
         tx = token_contract.functions.transfer(recipient, amount).buildTransaction(
             {
                 "from": self.address,
                 "nonce": self.w3.eth.getTransactionCount(self.address),
+                "maxPriorityFeePerGas": self.w3.eth.gasPrice,  # This may not be as critical on L2, but you can still set it
+                "maxFeePerGas": buffered_base_fee,
             }
         )
         signed_tx = self.w3.eth.account.sign_transaction(
@@ -435,12 +453,16 @@ class Uniswap:
             amount (int): The amount to transfer.
         """
         recipient = web3.Web3.toChecksumAddress(recipient)
+        base_fee = self.w3.eth.get_block("latest")["baseFeePerGas"]
+        buffered_base_fee = int(base_fee * 1.1)  # adjust the multiplier as needed
         tx = {
             "from": self.address,
             "to": recipient,
             "value": amount,
             "nonce": self.w3.eth.getTransactionCount(self.address),
-            "gasPrice": self.w3.eth.gasPrice,
+            # "gasPrice": self.w3.eth.gasPrice,
+            "maxPriorityFeePerGas": self.w3.eth.gasPrice,  # This may not be as critical on L2, but you can still set it
+            "maxFeePerGas": buffered_base_fee,
         }
 
         # Estimate gas
@@ -519,6 +541,9 @@ class Uniswap:
         # Increase gas estimate by 10%
         gas_estimate = int(gas_estimate * 1.1)
 
+        base_fee = self.w3.eth.get_block("latest")["baseFeePerGas"]
+        buffered_base_fee = int(base_fee * 1.1)  # adjust the multiplier as needed
+
         # Create the transaction that NonFungiblePositionManager will sign
         nonce = self.w3.eth.getTransactionCount(self.address)
         chain_id = (
@@ -528,7 +553,9 @@ class Uniswap:
         transaction = {
             "nonce": nonce,
             "gas": gas_estimate,
-            "gasPrice": self.w3.eth.gasPrice,
+            # "gasPrice": self.w3.eth.gasPrice,
+            "maxPriorityFeePerGas": self.w3.eth.gasPrice,  # This may not be as critical on L2, but you can still set it
+            "maxFeePerGas": buffered_base_fee,
             "to": self.nonFungiblePositionManager.address,
             "data": self.nonFungiblePositionManager.encodeABI(
                 fn_name="mint", args=[params]
@@ -574,6 +601,9 @@ class Uniswap:
         # Increase the gas estimate by 10% to avoid underestimation
         gas_estimate = int(gas_estimate * 1.1)
 
+        base_fee = self.w3.eth.get_block("latest")["baseFeePerGas"]
+        buffered_base_fee = int(base_fee * 1.1)  # adjust the multiplier as needed
+
         # Create the transaction that NonFungiblePositionManager will sign
         nonce = self.w3.eth.getTransactionCount(self.address)
         chain_id = self.w3.eth.chain_id
@@ -581,7 +611,9 @@ class Uniswap:
         transaction = {
             "nonce": nonce,
             "gas": gas_estimate,
-            "gasPrice": self.w3.eth.gasPrice,
+            # "gasPrice": self.w3.eth.gasPrice,
+            "maxPriorityFeePerGas": self.w3.eth.gasPrice,  # This may not be as critical on L2, but you can still set it
+            "maxFeePerGas": buffered_base_fee,
             "to": self.nonFungiblePositionManager.address,
             "data": self.nonFungiblePositionManager.encodeABI(
                 fn_name="decreaseLiquidity", args=[params]
@@ -621,6 +653,9 @@ class Uniswap:
         # Increase the gas estimate by 10% to avoid underestimation
         gas_estimate = int(gas_estimate * 1.1)
 
+        base_fee = self.w3.eth.get_block("latest")["baseFeePerGas"]
+        buffered_base_fee = int(base_fee * 1.1)  # adjust the multiplier as needed
+
         # Create the transaction that NonFungiblePositionManager will sign
         nonce = self.w3.eth.getTransactionCount(self.address)
         chain_id = self.w3.eth.chain_id
@@ -628,7 +663,9 @@ class Uniswap:
         transaction = {
             "nonce": nonce,
             "gas": gas_estimate,
-            "gasPrice": self.w3.eth.gasPrice,
+            # "gasPrice": self.w3.eth.gasPrice,
+            "maxPriorityFeePerGas": self.w3.eth.gasPrice,  # This may not be as critical on L2, but you can still set it
+            "maxFeePerGas": buffered_base_fee,
             "to": self.nonFungiblePositionManager.address,
             "data": self.nonFungiblePositionManager.encodeABI(
                 fn_name="collect", args=[params]
@@ -655,6 +692,8 @@ class Uniswap:
         gas_estimate = self.nonFungiblePositionManager.functions.burn(
             tokenId
         ).estimateGas()
+        base_fee = self.w3.eth.get_block("latest")["baseFeePerGas"]
+        buffered_base_fee = int(base_fee * 1.1)  # adjust the multiplier as needed
 
         # Increase the gas estimate by 10% to avoid underestimation
         gas_estimate = int(gas_estimate * 1.1)
@@ -666,7 +705,9 @@ class Uniswap:
         transaction = {
             "nonce": nonce,
             "gas": gas_estimate,
-            "gasPrice": self.w3.eth.gasPrice,
+            # "gasPrice": self.w3.eth.gasPrice,
+            "maxPriorityFeePerGas": self.w3.eth.gasPrice,  # This may not be as critical on L2, but you can still set it
+            "maxFeePerGas": buffered_base_fee,
             "to": self.nonFungiblePositionManager.address,
             "data": self.nonFungiblePositionManager.encodeABI(
                 fn_name="burn", args=[tokenId]
@@ -713,6 +754,9 @@ class Uniswap:
             "sqrtPriceLimitX96": 0,
         }
 
+        base_fee = self.w3.eth.get_block("latest")["baseFeePerGas"]
+        buffered_base_fee = int(base_fee * 1.1)  # adjust the multiplier as needed
+
         # Create the transaction that the SwapRouter will sign
         nonce = self.w3.eth.getTransactionCount(self.address)
         chain_id = self.w3.eth.chain_id
@@ -720,7 +764,9 @@ class Uniswap:
         transaction = {
             "nonce": nonce,
             "gas": int(8e6),  # gas_estimate,
-            "gasPrice": self.w3.eth.gasPrice,
+            # "gasPrice": self.w3.eth.gasPrice,
+            "maxPriorityFeePerGas": self.w3.eth.gasPrice,  # This may not be as critical on L2, but you can still set it
+            "maxFeePerGas": buffered_base_fee,
             "to": self.router.address,
             "data": self.router.encodeABI(fn_name="exactInputSingle", args=[params]),
             "chainId": chain_id,
