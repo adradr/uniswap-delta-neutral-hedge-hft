@@ -864,7 +864,7 @@ class Web3Manager:
         if direction == "buy":
             self.logger.info("Swapping stable amount first, then buying ETH")
             return_dict["stable_swap"] = self.swap_stable(
-                token_swap=amounts[amounts_key.replace("_in_token0", "_in_token1")],
+                amount=amounts[amounts_key.replace("_in_token0", "_in_token1")],
                 direction="buy",
             )
 
@@ -898,7 +898,7 @@ class Web3Manager:
             )
             stable_amount = round_down(stable_amount, 2)
             return_dict["stable_swap"] = self.swap_stable(
-                token_swap=return_dict["token_swap"],
+                amount=return_dict["token_swap"],
                 direction="sell",
             )
 
