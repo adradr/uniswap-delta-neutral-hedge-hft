@@ -37,7 +37,7 @@ def retry_on_exception(
                 try:
                     return func(*args, **kwargs)
                 except exceptions as e:
-                    print(e)
+                    print(func, e)
                     time.sleep(delay)
             return func(*args, **kwargs)
 
@@ -292,12 +292,14 @@ class Uniswap:
         """
         base_fee = self.w3.eth.get_block("latest")["baseFeePerGas"]
         buffered_base_fee = int(base_fee * 1.1)  # adjust the multiplier as needed
+        chain_id = self.w3.eth.chain_id
         tx = token_contract.functions.approve(spender, amount).buildTransaction(
             {
                 "from": self.address,
                 "nonce": self.w3.eth.getTransactionCount(self.address),
                 "maxPriorityFeePerGas": self.w3.eth.gasPrice,  # This may not be as critical on L2, but you can still set it
                 "maxFeePerGas": buffered_base_fee,
+                "chainId": chain_id,
             }
         )
         signed_tx = self.w3.eth.account.sign_transaction(
@@ -322,6 +324,7 @@ class Uniswap:
 
         base_fee = self.w3.eth.get_block("latest")["baseFeePerGas"]
         buffered_base_fee = int(base_fee * 1.1)  # adjust the multiplier as needed
+        chain_id = self.w3.eth.chainId
 
         tx = self.weth.functions.deposit().buildTransaction(
             {
@@ -331,6 +334,7 @@ class Uniswap:
                 # "gasPrice": self.w3.eth.gasPrice,
                 "maxPriorityFeePerGas": self.w3.eth.gasPrice,  # This may not be as critical on L2, but you can still set it
                 "maxFeePerGas": buffered_base_fee,
+                "chainId": chain_id,
             }
         )
         signed_tx = self.w3.eth.account.sign_transaction(
@@ -351,6 +355,7 @@ class Uniswap:
 
         base_fee = self.w3.eth.get_block("latest")["baseFeePerGas"]
         buffered_base_fee = int(base_fee * 1.1)  # adjust the multiplier as needed
+        chain_id = self.w3.eth.chainId
 
         tx = self.weth.functions.withdraw(amount).buildTransaction(
             {
@@ -359,6 +364,7 @@ class Uniswap:
                 # "gasPrice": self.w3.eth.gasPrice,
                 "maxPriorityFeePerGas": self.w3.eth.gasPrice,  # This may not be as critical on L2, but you can still set it
                 "maxFeePerGas": buffered_base_fee,
+                "chainId": chain_id,
             }
         )
         signed_tx = self.w3.eth.account.sign_transaction(
@@ -430,12 +436,14 @@ class Uniswap:
         recipient = web3.Web3.toChecksumAddress(recipient)
         base_fee = self.w3.eth.get_block("latest")["baseFeePerGas"]
         buffered_base_fee = int(base_fee * 1.1)  # adjust the multiplier as needed
+        chain_id = self.w3.eth.chainId
         tx = token_contract.functions.transfer(recipient, amount).buildTransaction(
             {
                 "from": self.address,
                 "nonce": self.w3.eth.getTransactionCount(self.address),
                 "maxPriorityFeePerGas": self.w3.eth.gasPrice,  # This may not be as critical on L2, but you can still set it
                 "maxFeePerGas": buffered_base_fee,
+                "chainId": chain_id,
             }
         )
         signed_tx = self.w3.eth.account.sign_transaction(
@@ -455,6 +463,7 @@ class Uniswap:
         recipient = web3.Web3.toChecksumAddress(recipient)
         base_fee = self.w3.eth.get_block("latest")["baseFeePerGas"]
         buffered_base_fee = int(base_fee * 1.1)  # adjust the multiplier as needed
+        chain_id = self.w3.eth.chainId
         tx = {
             "from": self.address,
             "to": recipient,
@@ -463,6 +472,7 @@ class Uniswap:
             # "gasPrice": self.w3.eth.gasPrice,
             "maxPriorityFeePerGas": self.w3.eth.gasPrice,  # This may not be as critical on L2, but you can still set it
             "maxFeePerGas": buffered_base_fee,
+            "chainId": chain_id,
         }
 
         # Estimate gas
