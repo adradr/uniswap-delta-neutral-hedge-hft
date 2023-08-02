@@ -868,6 +868,8 @@ class Web3Manager:
                 direction="buy",
             )
 
+            self.logger.info(f"Stable swap done: {return_dict['stable_swap']}")
+
             # We need to calculate the amount of ETH we will get from the stable swap
             eth_amount = float(return_dict["stable_swap"]["data"][0]["legs"][0]["sz"])
             eth_amount /= float(return_dict["stable_swap"]["data"][0]["legs"][0]["px"])
@@ -878,6 +880,8 @@ class Web3Manager:
                 direction="buy",
                 amount=amounts[amounts_key],
             )
+
+            self.logger.info(f"Token swap done: {return_dict['token_swap']}")
 
             return return_dict
 
@@ -890,6 +894,7 @@ class Web3Manager:
                 direction="sell",
                 amount=amounts[amounts_key],
             )
+            self.logger.info(f"Token swap done: {return_dict['token_swap']}")
 
             # We need to calculate the amount of USDT we will get from the token swap
             stable_amount = float(return_dict["token_swap"]["data"][0]["legs"][0]["sz"])
@@ -901,6 +906,7 @@ class Web3Manager:
                 amount=return_dict["token_swap"],
                 direction="sell",
             )
+            self.logger.info(f"Stable swap done: {return_dict['stable_swap']}")
 
             return return_dict
 
