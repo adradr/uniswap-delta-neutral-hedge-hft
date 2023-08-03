@@ -560,7 +560,7 @@ class OKXClient:
                     e_msg = "No quotes received in 60 seconds"
                     self.logger.info(e_msg)
                     raise BlockTradingNoQuote(e_msg)
-                time.sleep(2)
+                time.sleep(3)
                 continue
 
             # Filter for best quotes on each side
@@ -605,7 +605,7 @@ class OKXClient:
                 # TODO: Kill the RFQ
                 msg = "Deadline reached, no acceptable spread available, returning"
                 self.logger.info(msg)
-                time.sleep(2)
+                time.sleep(3)
                 raise BlockTradingTimeOut(msg)
 
             # Take the best spread
