@@ -539,6 +539,7 @@ class OKXClient:
         start_time = time.time()
 
         while True:
+            time.sleep(2)
             quote_response = self.block_trading_manager.get_quotes(
                 rfqId=rfq_id, state="active"
             )
@@ -560,7 +561,7 @@ class OKXClient:
                     e_msg = "No quotes received in 60 seconds"
                     self.logger.info(e_msg)
                     raise BlockTradingNoQuote(e_msg)
-                time.sleep(3)
+                time.sleep(2)
                 continue
 
             # Filter for best quotes on each side
@@ -599,13 +600,13 @@ class OKXClient:
 
             # Sleep if no spreads are available or deadline reached
             if len(filtered_spreads) == 0 and time.time() - start_time < deadline:
-                time.sleep(3)
+                time.sleep(2)
                 continue
             elif time.time() - start_time > deadline:
                 # TODO: Kill the RFQ
                 msg = "Deadline reached, no acceptable spread available, returning"
                 self.logger.info(msg)
-                time.sleep(3)
+                time.sleep(2)
                 raise BlockTradingTimeOut(msg)
 
             # Take the best spread
