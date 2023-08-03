@@ -599,12 +599,13 @@ class OKXClient:
 
             # Sleep if no spreads are available or deadline reached
             if len(filtered_spreads) == 0 and time.time() - start_time < deadline:
-                time.sleep(2)
+                time.sleep(3)
                 continue
             elif time.time() - start_time > deadline:
                 # TODO: Kill the RFQ
                 msg = "Deadline reached, no acceptable spread available, returning"
                 self.logger.info(msg)
+                time.sleep(2)
                 raise BlockTradingTimeOut(msg)
 
             # Take the best spread
