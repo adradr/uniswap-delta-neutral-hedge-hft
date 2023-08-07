@@ -498,7 +498,9 @@ class OKXClient:
 
         # Get the counterparties
         self.counterparties = self.block_trading_manager.counterparties()["data"]
-        counterparties = [c["traderCode"] for c in self.counterparties]
+        counterparties = [
+            c["traderCode"] for c in self.counterparties if c["type"] == "LP"
+        ]
 
         # Create legs
         legs = [
