@@ -180,17 +180,13 @@ class TradingEngineAPI:
         @self.app.route("/history", methods=["GET"])
         @flask_jwt_extended.jwt_required()
         def full_history():
-            if not self.engine.running:
-                return self.engine_not_running()
             return (
                 jsonify(
                     {
                         "status": "success",
                         "message": f"Stats for {type(self.engine).__name__}",
                         "engine": "running" if self.engine.running else "stopped",
-                        "results": self.engine.web3_manager.position_history
-                        if self.engine.running
-                        else None,
+                        "results": self.engine.web3_manager.position_history,
                     }
                 ),
                 200,
