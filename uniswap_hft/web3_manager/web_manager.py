@@ -809,9 +809,16 @@ class Web3Manager:
             destination_address=self.wallet_address,
         )
         if withdraw_response["code"] != "0":
-            e_msg = f"Withdraw failed from OKX ({amounts_key}): {withdraw_response}"
+            e_msg = f"Withdraw failed from OKX ({amounts_key}): {withdraw_response}. Transferring back to main account..."
             self.logger.error(e_msg)
             self.send_telegram_message(message=e_msg)
+            self.cex_client_main.transfer_from_mainaccount_to_subaccount(
+                from_account="funding",
+                to_account="trading",
+                subaccount_name=self.cex_client_subaccount.account_name,
+                currency=currency,
+                amount=amounts[amounts_key],
+            )
             raise WithdrawFailed(e_msg)
         self.logger.info(
             f"Withdrawn {amounts[amounts_key]} {currency} from OKX to Metamask: {withdraw_response}"
@@ -845,6 +852,14 @@ class Web3Manager:
             amount=stable_amount,
         )
 
+    def check_swap_success(self, swap_response):
+        if swap_response["code"] != "0":
+            e_msg = f"Swap failed: {swap_response}"
+            self.logger.error(e_msg)
+            self.send_telegram_message(message=e_msg)
+            raise BlocktradeFailed(e_msg)
+        self.logger.info(f"Swap successful: {swap_response}")
+
     def handle_no_quote_exception(self, e_msg, amounts, amounts_key, direction):
         if amounts["cex_symbol"] == "ETH-USDT":
             symbol = "ETH-USDC"
@@ -868,11 +883,14 @@ class Web3Manager:
                 direction="buy",
             )
 
-            self.logger.info(f"Stable swap done: {return_dict['stable_swap']}")
+            # Check if stable swap was successful
+            self.check_swap_success(return_dict["stable_swap"])
 
             # We need to calculate the amount of ETH we will get from the stable swap
             eth_amount = float(return_dict["stable_swap"]["data"][0]["legs"][0]["sz"])
             eth_amount /= float(return_dict["stable_swap"]["data"][0]["legs"][0]["px"])
+            fee = abs(float(return_dict["stable_swap"]["data"][0]["legs"][0]["fee"]))
+            eth_amount -= fee
             eth_amount = round_down(eth_amount, 6)
 
             return_dict["token_swap"] = self.make_block_trade(
@@ -881,8 +899,8 @@ class Web3Manager:
                 amount=amounts[amounts_key],
             )
 
-            self.logger.info(f"Token swap done: {return_dict['token_swap']}")
-
+            # Check if token swap was successful
+            self.check_swap_success(return_dict["token_swap"])
             return return_dict
 
         # If we would be selling ETH, we will sell it for USDT
@@ -894,7 +912,9 @@ class Web3Manager:
                 direction="sell",
                 amount=amounts[amounts_key],
             )
-            self.logger.info(f"Token swap done: {return_dict['token_swap']}")
+
+            # Check if token swap was successful
+            self.check_swap_success(return_dict["token_swap"])
 
             # We need to calculate the amount of USDT we will get from the token swap
             stable_amount = float(return_dict["token_swap"]["data"][0]["legs"][0]["sz"])
@@ -906,8 +926,9 @@ class Web3Manager:
                 amount=return_dict["token_swap"],
                 direction="sell",
             )
-            self.logger.info(f"Stable swap done: {return_dict['stable_swap']}")
 
+            # Check if stable swap was successful
+            self.check_swap_success(return_dict["stable_swap"])
             return return_dict
 
     def handle_minimum_notional_size_exception(
@@ -987,7 +1008,7 @@ class Web3Manager:
         6. Update position on Uniswap and close position
         7. Deposit funds from Metamask to OKX
             - ETH
-            - USDT
+            - USDT/USDC
         """
         return_values = []
         # Unwrap WETH if needed
