@@ -209,7 +209,16 @@ class OKXClient:
         ]
         return [x for x in instruments if x["instId"] == instrument]
 
-    def round_amount(self, input_amount: float, min_rounded_amount: float) -> float:
+    def round_amount(
+        self,
+        input_amount: float,
+        min_rounded_amount: float,
+        rounding_type: typing.Union[
+            decimal.ROUND_UP,
+            decimal.ROUND_DOWN,
+            decimal.ROUND_05UP,
+        ] = decimal.ROUND_05UP,
+    ) -> float:
         input_amount_dec = decimal.Decimal(str(input_amount))
         min_rounded_amount_dec = decimal.Decimal(str(min_rounded_amount))
 
@@ -218,7 +227,16 @@ class OKXClient:
         ) * min_rounded_amount_dec
         return float(rounded_amount_dec)
 
-    def round_amount_to_lotsize(self, amount: float, symbol: str):
+    def round_amount_to_lotsize(
+        self,
+        amount: float,
+        symbol: str,
+        rounding_type: typing.Union[
+            decimal.ROUND_UP,
+            decimal.ROUND_DOWN,
+            decimal.ROUND_05UP,
+        ] = decimal.ROUND_05UP,
+    ) -> float:
         instrument_info = self.get_instrument(instrument=symbol)
         if instrument_info[0]["lotSz"]:
             lot_size = instrument_info[0]["lotSz"]
@@ -455,6 +473,9 @@ class OKXClient:
     ) -> dict:
         max_fee = float(self.get_currency(currency)["maxFee"])
         amount = amount - max_fee
+        amount = self.round_amount_to_lotsize(
+            amount=amount, symbol=currency, rounding_type=decimal.ROUND_DOWN
+        )
         return self.funding_manager.withdrawal(
             ccy=currency,
             amt=amount,
