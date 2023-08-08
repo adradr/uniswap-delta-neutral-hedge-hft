@@ -76,7 +76,7 @@ class Web3Manager:
         pool_fee: int,
         wallet_address: eth_typing.evm.ChecksumAddress,
         wallet_private_key: str,
-        range_percentage: int,
+        range_percentage: float,
         usd_capital: int,
         provider: str,
         burn_on_close: bool = False,
@@ -92,7 +92,7 @@ class Web3Manager:
             pool_fee (int): The fee of the pool for swapping tokens (probably can use a hardcoded value)
             wallet_address (eth_typing.evm.ChecksumAddress): The address of the wallet where the funds are located at
             wallet_private_key (str): The private key of the wallet
-            range_percentage (int): How wide the range should be in percentage (e.g. 1 for 1%)
+            range_percentage (float): How wide the range should be in percentage (e.g. 1 for 1%)
             usd_capital (int): How much of the funds should be used to provide liquidity for token0 (e.g. 1000 for 1000USDC). Note: it will be ~doubled for the total position size
             provider (str): The provider of the blockchain, e.g. infura
             burn_on_close (bool, optional): Whether to burn the liquidity tokens on close. Defaults to False.
@@ -128,9 +128,6 @@ class Web3Manager:
                     "bot_token": "your_token",
                     "chat_id": "your_chat_id",
                 }
-
-        Raises:
-            ValueError: If the range_percentage is not between 0 and 100
 
 
         """
@@ -803,7 +800,7 @@ class Web3Manager:
         self.logger.info(
             f"Withdrawing {amounts[amounts_key]} {currency} from OKX to Metamask..."
         )
-        wd_tick_size = self.cex_client_main.get_currency(currency)["wdTickSz"]
+        wd_tick_size = float(self.cex_client_main.get_currency(currency)["wdTickSz"])
         amount = round_down(number=amounts[amounts_key], decimals=wd_tick_size)
 
         withdraw_response = self.cex_client_main.withdraw_from_mainaccount(

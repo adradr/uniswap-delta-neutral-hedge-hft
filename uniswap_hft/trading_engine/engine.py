@@ -13,7 +13,7 @@ class TradingEngine:
         pool_fee: int,
         wallet_address: eth_typing.evm.ChecksumAddress,
         wallet_private_key: str,
-        range_percentage: int,
+        range_percentage: float,
         usd_capital: int,
         provider: str,
         burn_on_close: bool = False,
@@ -31,7 +31,7 @@ class TradingEngine:
             pool_fee (int): Fee of the pool in percentage (e.g. 3000 for 0.3%)
             wallet_address (eth_typing.evm.ChecksumAddress): Address of the wallet to use
             wallet_private_key (str): Private key of the wallet
-            range_percentage (int): Range of the position in percentage (e.g. 1 for 1%)
+            range_percentage (float): Range of the position in percentage (e.g. 1 for 1%)
             usd_capital (int): How much of the funds should be used to provide liquidity for token0 (e.g. 1000 for 1000USDC). Note: it will be ~doubled for the total position size
             provider (str): Provider URL of the blockchain RPC, e.g. infura
             burn_on_close (bool, optional): Whether to burn the position on close. Defaults to False.
