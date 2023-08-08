@@ -803,9 +803,12 @@ class Web3Manager:
         self.logger.info(
             f"Withdrawing {amounts[amounts_key]} {currency} from OKX to Metamask..."
         )
+        wd_tick_size = self.cex_client_main.get_currency(currency)["wdTickSz"]
+        amount = round_down(number=amounts[amounts_key], decimals=wd_tick_size)
+
         withdraw_response = self.cex_client_main.withdraw_from_mainaccount(
             currency=currency,
-            amount=amounts[amounts_key],
+            amount=amount,
             destination_address=self.wallet_address,
         )
         if withdraw_response["code"] != "0":

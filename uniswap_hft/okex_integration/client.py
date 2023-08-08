@@ -473,9 +473,6 @@ class OKXClient:
     ) -> dict:
         max_fee = float(self.get_currency(currency)["maxFee"])
         amount = amount - max_fee
-        amount = self.round_amount_to_lotsize(
-            amount=amount, symbol=currency, rounding_type=decimal.ROUND_DOWN
-        )
         return self.funding_manager.withdrawal(
             ccy=currency,
             amt=amount,
