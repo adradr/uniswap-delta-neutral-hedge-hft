@@ -107,7 +107,7 @@ parser.add_argument(
 
 parser.add_argument(
     "--range-percentage",
-    type=int,
+    type=float,
     help="The range percentage",
     default=os.getenv("RANGE_PERCENTAGE"),
 )
