@@ -921,9 +921,8 @@ class Web3Manager:
             stable_amount *= float(
                 return_dict["token_swap"]["data"][0]["legs"][0]["px"]
             )
-            stable_amount = round_down(stable_amount, 2)
             return_dict["stable_swap"] = self.swap_stable(
-                amount=return_dict["token_swap"],
+                amount=stable_amount,
                 direction="sell",
             )
 
