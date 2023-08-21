@@ -832,7 +832,13 @@ class Web3Manager:
 
         return withdraw_response
 
-    def make_block_trade(self, symbol, direction, amount):
+    def make_block_trade(
+        self,
+        symbol,
+        direction,
+        amount,
+        tgtCcy: typing.Literal["base_ccy", "quote_ccy"] = "base_ccy",
+    ):
         return self.cex_client_subaccount.make_single_leg_block_trade(
             symbol=symbol,
             side=direction,
@@ -841,6 +847,7 @@ class Web3Manager:
             allow_partial_fill=False,
             deadline=self.cex_client_main.block_trading_deadline,
             maximum_spread_bps=self.cex_client_subaccount.maximum_spread_bps,
+            tgtCcy=tgtCcy,
         )
 
     def swap_stable(self, amount, direction):
@@ -878,6 +885,9 @@ class Web3Manager:
         return_dict = {}
         if direction == "buy":
             self.logger.info("Swapping stable amount first, then buying ETH")
+            self.logger.info(
+                f"Swapping stable amount: {amounts[amounts_key]}, direction: {direction}"
+            )
             return_dict["stable_swap"] = self.swap_stable(
                 amount=amounts[amounts_key.replace("_in_token0", "_in_token1")],
                 direction="buy",
@@ -886,17 +896,19 @@ class Web3Manager:
             # Check if stable swap was successful
             self.check_swap_success(return_dict["stable_swap"])
 
-            # We need to calculate the amount of ETH we will get from the stable swap
-            eth_amount = float(return_dict["stable_swap"]["data"][0]["legs"][0]["sz"])
-            eth_amount /= float(return_dict["stable_swap"]["data"][0]["legs"][0]["px"])
+            # We need to calculate the amount of ETH we will need to buy
+            amount = float(return_dict["stable_swap"]["data"][0]["legs"][0]["sz"])
+            amount /= float(return_dict["stable_swap"]["data"][0]["legs"][0]["px"])
             fee = abs(float(return_dict["stable_swap"]["data"][0]["legs"][0]["fee"]))
-            eth_amount -= fee
-            eth_amount = round_down(eth_amount, 6)
+            amount -= fee
+            amount = round_down(amount, 6)
 
+            self.logger.info(f"Buying ETH: {amount}, direction: {direction}")
             return_dict["token_swap"] = self.make_block_trade(
                 symbol=symbol,
                 direction="buy",
-                amount=amounts[amounts_key],
+                amount=amount,
+                tgtCcy="quote_ccy",
             )
 
             # Check if token swap was successful
@@ -907,6 +919,9 @@ class Web3Manager:
         # We need to swap USDT for USDC afterwards
         elif direction == "sell":
             self.logger.info("Selling ETH, then swapping stable amount")
+            self.logger.info(
+                f"Selling ETH: {amounts[amounts_key]}, direction: {direction}"
+            )
             return_dict["token_swap"] = self.make_block_trade(
                 symbol=symbol,
                 direction="sell",
@@ -917,12 +932,16 @@ class Web3Manager:
             self.check_swap_success(return_dict["token_swap"])
 
             # We need to calculate the amount of USDT we will get from the token swap
-            stable_amount = float(return_dict["token_swap"]["data"][0]["legs"][0]["sz"])
-            stable_amount *= float(
-                return_dict["token_swap"]["data"][0]["legs"][0]["px"]
+            amount = float(return_dict["token_swap"]["data"][0]["legs"][0]["sz"])
+            amount *= float(return_dict["token_swap"]["data"][0]["legs"][0]["px"])
+            fee = abs(float(return_dict["token_swap"]["data"][0]["legs"][0]["fee"]))
+            amount -= fee
+            amount = round_down(amount, 6)
+            self.logger.info(
+                f"Swapping stable amount: {amount}, direction: {direction}"
             )
             return_dict["stable_swap"] = self.swap_stable(
-                amount=stable_amount,
+                amount=amount,
                 direction="sell",
             )
 
