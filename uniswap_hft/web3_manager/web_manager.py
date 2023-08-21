@@ -1371,7 +1371,7 @@ class Web3Manager:
 
         # Print range info
         self.logger.info(
-            f"Current price: {current_price} | Range: {range_low} - {range_high}"
+            f"Current price: {current_price} (Current tick: {current_tick}) | Range: {range_low} - {range_high}"
         )
 
         # Calculate required amounts
