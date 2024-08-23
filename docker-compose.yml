@@ -3,16 +3,17 @@ services:
   uniswap-hft-api:
     build:
       context: .
+    image: acrtradingdeskdev.azurecr.io/trading-engine/uniswap-hft:${TAG}
     container_name: uniswap-hft-api
+    env_file: 
+      - "${ENV_FILE}"
     volumes:
-      - .:/docker-app
-    env_file:
-      - .env
+      - ./${POSITION_HISTORY_PATH}:/docker-app/${POSITION_HISTORY_PATH}
     ports:
       - "${PORT}:${PORT}"
     command: 
       - "python"
-      - "app.py"
+      - "app_${CEX_OR_DEX}.py"
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:${PORT}/healthcheck || exit 1"]
       interval: 15m
@@ -21,13 +22,19 @@ services:
       start_period: 15s
     networks:
       - uniswap-hft-network
-
+    logging:
+        driver: "json-file"
+        options:
+            max-size: "25m"
+            max-file: "10"
+            
   uniswap-hft-scheduler:
     build:
       context: .
+    image: acrtradingdeskdev.azurecr.io/trading-engine/uniswap-hft:${TAG}
     container_name: uniswap-hft-scheduler
-    env_file:
-      - .env
+    env_file: 
+      - "${ENV_FILE}"
     command: 
       - "python"
       - "-m"
@@ -36,13 +43,19 @@ services:
       - uniswap-hft-network
     depends_on:
       - uniswap-hft-api
+    logging:
+        driver: "json-file"
+        options:
+            max-size: "25m"
+            max-file: "10"
 
   uniswap-hft-telegram-bot:
     build:
       context: .
+    image: acrtradingdeskdev.azurecr.io/trading-engine/uniswap-hft:${TAG}
     container_name: uniswap-hft-telegram-bot
-    env_file:
-      - .env
+    env_file: 
+      - "${ENV_FILE}"
     command: 
       - "python"
       - "-m"
@@ -51,6 +64,11 @@ services:
       - uniswap-hft-network
     depends_on:
       - uniswap-hft-api
+    logging:
+        driver: "json-file"
+        options:
+            max-size: "25m"
+            max-file: "10"
 
 networks:
   uniswap-hft-network:

@@ -75,6 +75,7 @@ def update_engine(token: str) -> None:
     response = requests.get(UPDATE_ENDPOINT, headers=headers)
     if response.status_code == 200:
         logging.info("Successfully updated the trading engine")
+        logging.info(response.json())
     else:
         logging.error("Failed to update the trading engine: %s", response.text)
 
@@ -87,7 +88,7 @@ def get_stats(token: str) -> None:
         logging.info("Successfully retrieved the trading engine stats")
         logging.info(response.json())
     else:
-        logging.error("Failed to update the trading engine: %s", response.text)
+        logging.error("Failed to get stats from the trading engine: %s", response.text)
 
 
 def scheduler_job_update_engine():

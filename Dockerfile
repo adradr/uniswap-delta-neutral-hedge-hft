@@ -6,7 +6,7 @@ FROM python:3.10
 WORKDIR /docker-app
 
 # Add the current directory contents into the container at /app
-ADD app.py setup.py /docker-app/
+ADD app_cex.py app_dex.py setup.py /docker-app/
 ADD uniswap_hft /docker-app/uniswap_hft
 
 # Install the local package

@@ -2,10 +2,8 @@ import datetime
 import logging
 import time
 
+import flask_jwt_extended
 from flask import Flask, jsonify, request
-from flask_jwt_extended import (JWTManager, create_access_token,
-                                create_refresh_token, get_jwt_identity,
-                                jwt_required)
 
 from uniswap_hft.trading_engine import engine
 
@@ -30,12 +28,12 @@ class TradingEngineAPI:
         self.app.config["JWT_ACCESS_TOKEN_EXPIRES"] = datetime.timedelta(
             minutes=jwt_access_token_expires
         )
-        self.jwt = JWTManager(self.app)
+        self.jwt = flask_jwt_extended.JWTManager(self.app)
         self.allowed_users_passwords = allowed_users_passwords
-        self.logger = logging.getLogger(__name__)  # Retrieve the logger object
 
-        # Set log level based on debug flag
-        log_level = logging.DEBUG if self.debug else logging.INFO
+        # Initialize logging
+        self.logger = logging.getLogger(__name__)
+        log_level = logging.DEBUG if debug else logging.INFO
         self.logger.setLevel(log_level)
 
         @self.app.route("/login", methods=["POST"])
@@ -59,8 +57,10 @@ class TradingEngineAPI:
                     jsonify({"status": "error", "message": "Invalid credentials"}),
                     401,
                 )
-            access_token = create_access_token(identity=username, fresh=True)
-            refresh_token = create_refresh_token(identity=username)
+            access_token = flask_jwt_extended.create_access_token(
+                identity=username, fresh=True
+            )
+            refresh_token = flask_jwt_extended.create_refresh_token(identity=username)
             return (
                 jsonify(
                     {
@@ -73,14 +73,14 @@ class TradingEngineAPI:
             )
 
         @self.app.route("/refresh", methods=["POST"])
-        @jwt_required(refresh=True)
+        @flask_jwt_extended.jwt_required(refresh=True)
         def refresh():
-            identity = get_jwt_identity()
-            access_token = create_access_token(identity=identity)
+            identity = flask_jwt_extended.get_jwt_identity()
+            access_token = flask_jwt_extended.create_access_token(identity=identity)
             return jsonify({"status": "success", "access_token": access_token}), 200
 
         @self.app.route("/start", methods=["GET"])
-        @jwt_required()
+        @flask_jwt_extended.jwt_required()
         def start_engine():
             # Return error if engine is already running
             if self.engine.running:
@@ -92,114 +92,143 @@ class TradingEngineAPI:
                             "engine": "running" if self.engine.running else "stopped",
                         }
                     ),
-                    404,
+                    200,
                 )
 
             # Start the engine
-            position_history = self.engine.start()
-            logging.info(f"Started {type(self.engine).__name__}")
-            return (
-                jsonify(
-                    {
-                        "status": "success",
-                        "message": f"Started {type(self.engine).__name__}",
-                        "engine": "running" if self.engine.running else "stopped",
-                        "stats": position_history,
-                    }
-                ),
-                200,
-            )
+            try:
+                position_history = self.engine.start()
+                self.logger.info(f"Started {type(self.engine).__name__}")
+                return (
+                    jsonify(
+                        {
+                            "status": "success",
+                            "message": f"Started {type(self.engine).__name__}",
+                            "engine": "running" if self.engine.running else "stopped",
+                            "results": position_history,
+                        }
+                    ),
+                    200,
+                )
+            except Exception as e:
+                self.logger.error(e)
+                return (
+                    jsonify(
+                        {
+                            "status": "error",
+                            "message": f"Error starting {type(self.engine).__name__}: {e}",
+                            "engine": "running" if self.engine.running else "stopped",
+                        }
+                    ),
+                    500,
+                )
 
         @self.app.route("/stop", methods=["GET"])
-        @jwt_required()
+        @flask_jwt_extended.jwt_required()
         def stop_engine():
             # Return error if engine is not running
             if not self.engine.running:
-                return (
-                    jsonify(
-                        {
-                            "status": "error",
-                            "message": f"{type(self.engine).__name__} is not running",
-                            "engine": "running" if self.engine.running else "stopped",
-                        }
-                    ),
-                    404,
-                )
+                return self.engine_not_running()
 
             # Stop the engine
-            position_history = self.engine.stop()
-            logging.info(f"Stopped {type(self.engine).__name__}")
-            return (
-                jsonify(
-                    {
-                        "status": "success",
-                        "message": f"Stopped {type(self.engine).__name__}",
-                        "engine": "running" if self.engine.running else "stopped",
-                        "stats": position_history,
-                    }
-                ),
-                200,
-            )
-
-        @self.app.route("/stats", methods=["GET"])
-        @jwt_required()
-        def engine_stats():
-            if not self.engine.running:
+            try:
+                position_history = self.engine.stop()
+                self.logger.info(f"Stopped {type(self.engine).__name__}")
+                return (
+                    jsonify(
+                        {
+                            "status": "success",
+                            "message": f"Stopped {type(self.engine).__name__}",
+                            "engine": "running" if self.engine.running else "stopped",
+                            "results": position_history,
+                        }
+                    ),
+                    200,
+                )
+            except Exception as e:
+                self.logger.error(e)
                 return (
                     jsonify(
                         {
                             "status": "error",
-                            "message": "Engine is not running",
+                            "message": f"Error stopping {type(self.engine).__name__}: {e}",
                             "engine": "running" if self.engine.running else "stopped",
                         }
                     ),
-                    404,
+                    500,
                 )
+
+        @self.app.route("/stats", methods=["GET"])
+        @flask_jwt_extended.jwt_required()
+        def engine_stats():
+            if not self.engine.running:
+                return self.engine_not_running()
             return (
                 jsonify(
                     {
                         "status": "success",
                         "message": f"Stats for {type(self.engine).__name__}",
                         "engine": "running" if self.engine.running else "stopped",
-                        "stats": self.engine.web3_manager.position_history[-1],
+                        "results": self.engine.web3_manager.position_history[-1]
+                        if self.engine.running
+                        else None,
+                    }
+                ),
+                200,
+            )
+
+        @self.app.route("/history", methods=["GET"])
+        @flask_jwt_extended.jwt_required()
+        def full_history():
+            return (
+                jsonify(
+                    {
+                        "status": "success",
+                        "message": f"Stats for {type(self.engine).__name__}",
+                        "engine": "running" if self.engine.running else "stopped",
+                        "results": self.engine.web3_manager.position_history,
                     }
                 ),
                 200,
             )
 
         @self.app.route("/update-engine", methods=["GET"])
-        @jwt_required()
+        @flask_jwt_extended.jwt_required()
         def update_engine():
             # Only update if engine is running
             if not self.engine.running:
+                return self.engine_not_running()
+
+            # Update engine
+            try:
+                position_history = self.engine.update_engine()
+                self.logger.info(f"Updated {type(self.engine).__name__}")
+                return (
+                    jsonify(
+                        {
+                            "status": "success",
+                            "message": f"Updated {type(self.engine).__name__}",
+                            "engine": "running" if self.engine.running else "stopped",
+                            "results": position_history,
+                        }
+                    ),
+                    200,
+                )
+            except Exception as e:
+                self.logger.error(e)
                 return (
                     jsonify(
                         {
                             "status": "error",
-                            "message": "Engine is not running",
+                            "message": f"Error updating {type(self.engine).__name__}: {e}",
                             "engine": "running" if self.engine.running else "stopped",
                         }
                     ),
-                    404,
+                    500,
                 )
 
-            # Update engine
-            position_history = self.engine.update_engine()
-            logging.info(f"Updated {type(self.engine).__name__}")
-            return (
-                jsonify(
-                    {
-                        "status": "success",
-                        "message": f"Updated {type(self.engine).__name__}",
-                        "engine": "running" if self.engine.running else "stopped",
-                        "stats": position_history,
-                    }
-                ),
-                200,
-            )
-
         @self.app.route("/update-params", methods=["POST"])
-        @jwt_required()
+        @flask_jwt_extended.jwt_required()
         def update_params():
             # Get params from request
             params = request.json
@@ -212,11 +241,11 @@ class TradingEngineAPI:
                             "engine": "running" if self.engine.running else "stopped",
                         }
                     ),
-                    401,
+                    200,
                 )
             # Update params
             self.engine.update_params(params)
-            logging.info(f"Updated params for {type(self.engine).__name__}")
+            self.logger.info(f"Updated params for {type(self.engine).__name__}")
             return (
                 jsonify(
                     {
@@ -242,5 +271,19 @@ class TradingEngineAPI:
                 200,
             )
 
+    def engine_not_running(self):
+        return (
+            jsonify(
+                {
+                    "status": "error",
+                    "message": f"{type(self.engine).__name__} is not running",
+                    "engine": "running" if self.engine.running else "stopped",
+                }
+            ),
+            200,
+        )
+
     def run(self):
-        self.app.run(debug=self.debug, port=self.port, host=self.host)
+        self.app.run(
+            debug=self.debug, use_reloader=False, port=self.port, host=self.host
+        )
